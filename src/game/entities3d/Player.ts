@@ -506,31 +506,39 @@ export class Player {
     return parts.hipsBaseY ?? 0.55;
   }
 
-  /** Land walk / idle */
+  /** Land walk / idle — gentle stride; arms stay near sides (kids found big swings creepy). */
   private animateWalk(dt: number, moving: boolean, parts: LimbParts): void {
     const { legL, legR, armL, armR, hips } = parts;
     const baseY = this.hipsBaseY(parts);
 
-    // Reset swim-only arm spreads
-    armL.rotation.z *= 0.85;
-    armR.rotation.z *= 0.85;
-    armL.rotation.y *= 0.85;
-    armR.rotation.y *= 0.85;
+    // Softly settle any swim spreads / windmill axes
+    armL.rotation.z *= 0.72;
+    armR.rotation.z *= 0.72;
+    armL.rotation.y *= 0.72;
+    armR.rotation.y *= 0.72;
 
     if (moving) {
-      this.animT += dt * 12 * Math.min(1.4, 0.5 + Math.hypot(this.velocity.x, this.velocity.z) / this.walkSpeed);
+      this.animT +=
+        dt *
+        9 *
+        Math.min(
+          1.25,
+          0.5 + Math.hypot(this.velocity.x, this.velocity.z) / this.walkSpeed,
+        );
       const s = Math.sin(this.animT);
-      legL.rotation.x = s * 0.75;
-      legR.rotation.x = -s * 0.75;
-      armL.rotation.x = -s * 0.55;
-      armR.rotation.x = s * 0.55;
-      hips.position.y = baseY + Math.abs(s) * 0.05;
+      // Legs do the readable work; arms barely counter-swing
+      legL.rotation.x = s * 0.42;
+      legR.rotation.x = -s * 0.42;
+      armL.rotation.x = -s * 0.12;
+      armR.rotation.x = s * 0.12;
+      hips.position.y = baseY + Math.abs(s) * 0.035;
     } else {
-      legL.rotation.x *= 0.78;
-      legR.rotation.x *= 0.78;
-      armL.rotation.x *= 0.78;
-      armR.rotation.x *= 0.78;
-      hips.position.y = baseY + Math.sin(this.time * 2.2) * 0.02;
+      legL.rotation.x *= 0.7;
+      legR.rotation.x *= 0.7;
+      // Arms return to rest at sides quickly
+      armL.rotation.x *= 0.65;
+      armR.rotation.x *= 0.65;
+      hips.position.y = baseY + Math.sin(this.time * 2.2) * 0.015;
     }
   }
 
@@ -547,58 +555,59 @@ export class Player {
     const flipperKick = parts.scubaGear?.visible ? 1.35 : 1;
 
     if (moving) {
-      // Crawl cycle
-      this.animT += dt * 9 * Math.min(1.3, 0.4 + Math.hypot(this.velocity.x, this.velocity.z) / this.swimSpeed);
+      // Soft paddle + flutter kick (not big freestyle windmills)
+      this.animT +=
+        dt *
+        7 *
+        Math.min(
+          1.2,
+          0.4 + Math.hypot(this.velocity.x, this.velocity.z) / this.swimSpeed,
+        );
       const s = Math.sin(this.animT);
-      const c = Math.cos(this.animT);
-      const s2 = Math.sin(this.animT * 2); // double-time kick
+      const s2 = Math.sin(this.animT * 2);
 
-      // Flutter kick (fast vertical-ish kick while body is leaned)
-      legL.rotation.x = 0.35 + s2 * 0.85 * flipperKick;
-      legR.rotation.x = 0.35 - s2 * 0.85 * flipperKick;
-      legL.rotation.z = s2 * 0.12 * flipperKick;
-      legR.rotation.z = -s2 * 0.12 * flipperKick;
+      legL.rotation.x = 0.28 + s2 * 0.45 * flipperKick;
+      legR.rotation.x = 0.28 - s2 * 0.45 * flipperKick;
+      legL.rotation.z = s2 * 0.06 * flipperKick;
+      legR.rotation.z = -s2 * 0.06 * flipperKick;
 
-      // Freestyle-ish arm stroke: opposite arms
-      // phase: reach forward (neg X) → out (Z) → pull back
-      armL.rotation.x = -0.2 + s * 1.15;
-      armR.rotation.x = -0.2 - s * 1.15;
-      armL.rotation.z = 0.55 + c * 0.65; // open out then in
-      armR.rotation.z = -0.55 - c * 0.65;
-      armL.rotation.y = s * 0.35;
-      armR.rotation.y = -s * 0.35;
+      // Arms mostly forward/out a little — readable swim, not creepy thrash
+      armL.rotation.x = 0.05 + s * 0.28;
+      armR.rotation.x = 0.05 - s * 0.28;
+      armL.rotation.z = 0.28 + s * 0.12;
+      armR.rotation.z = -0.28 - s * 0.12;
+      armL.rotation.y = s * 0.08;
+      armR.rotation.y = -s * 0.08;
 
-      // Bob through the stroke (procedural was 0.42 ≈ base 0.55 − 0.13)
-      hips.position.y = baseY - 0.13 + Math.abs(s) * 0.06;
+      hips.position.y = baseY - 0.1 + Math.abs(s) * 0.04;
 
-      // Bubbles while stroking
       this.bubbleAcc += dt;
-      if (this.bubbleAcc > 0.12) {
+      if (this.bubbleAcc > 0.14) {
         this.bubbleAcc = 0;
         this.spawnBubble();
       }
     } else {
-      // Float idle — gentle scull + treading water
-      this.animT += dt * 3.2;
+      // Float idle — tiny treading, arms relaxed outward
+      this.animT += dt * 2.6;
       const s = Math.sin(this.animT);
       const s2 = Math.sin(this.animT * 2.1);
 
-      legL.rotation.x = 0.5 + s2 * 0.25 * flipperKick;
-      legR.rotation.x = 0.5 - s2 * 0.25 * flipperKick;
-      legL.rotation.z = s * 0.08;
-      legR.rotation.z = -s * 0.08;
+      legL.rotation.x = 0.4 + s2 * 0.15 * flipperKick;
+      legR.rotation.x = 0.4 - s2 * 0.15 * flipperKick;
+      legL.rotation.z = s * 0.05;
+      legR.rotation.z = -s * 0.05;
 
-      armL.rotation.x = 0.15 + s * 0.2;
-      armR.rotation.x = 0.15 - s * 0.2;
-      armL.rotation.z = 0.75 + s * 0.15;
-      armR.rotation.z = -0.75 - s * 0.15;
-      armL.rotation.y *= 0.9;
-      armR.rotation.y *= 0.9;
+      armL.rotation.x = 0.08 + s * 0.08;
+      armR.rotation.x = 0.08 - s * 0.08;
+      armL.rotation.z = 0.32 + s * 0.06;
+      armR.rotation.z = -0.32 - s * 0.06;
+      armL.rotation.y *= 0.85;
+      armR.rotation.y *= 0.85;
 
-      hips.position.y = baseY - 0.15 + Math.sin(this.time * 1.8) * 0.05;
+      hips.position.y = baseY - 0.12 + Math.sin(this.time * 1.8) * 0.035;
 
       this.bubbleAcc += dt;
-      if (this.bubbleAcc > 0.45) {
+      if (this.bubbleAcc > 0.5) {
         this.bubbleAcc = 0;
         this.spawnBubble();
       }
