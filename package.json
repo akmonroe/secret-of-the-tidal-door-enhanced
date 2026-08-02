@@ -1,0 +1,21 @@
+{
+  "name": "secret-of-the-tidal-door-enhanced",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1",
+    "three": "^0.185.1"
+  },
+  "description": "Fork of Secret of the Tidal Door with Imagine-generated realistic kid-friendly assets"
+}
