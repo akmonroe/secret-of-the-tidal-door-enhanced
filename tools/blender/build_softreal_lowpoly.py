@@ -350,29 +350,56 @@ def make_human(name: str, is_girl: bool):
 
 
 # ── Creatures (soft-real, low poly) ──────────────────────────────────────────
+# Solid multi-mats (not UV spray of full portrait) — cleaner on mobile low-poly.
+# Polished Imagine PNGs remain for billboard fallbacks in the game.
+
+# kind → (body, belly/accent, dark/fin) linear RGB 0-1, kid-friendly soft-real
+CREATURE_PALETTES = {
+    "shark":   ((0.45, 0.58, 0.68), (0.88, 0.90, 0.92), (0.32, 0.40, 0.48)),
+    "jelly":   ((0.72, 0.58, 0.92), (0.88, 0.78, 0.98), (0.62, 0.48, 0.85)),
+    "ray":     ((0.28, 0.34, 0.40), (0.78, 0.82, 0.86), (0.18, 0.22, 0.28)),
+    "sealion": ((0.55, 0.38, 0.26), (0.78, 0.62, 0.48), (0.35, 0.25, 0.18)),
+    "angler":  ((0.22, 0.24, 0.42), (0.35, 0.32, 0.55), (0.95, 0.92, 0.45)),
+    "marlin":  ((0.18, 0.42, 0.72), (0.88, 0.90, 0.92), (0.92, 0.72, 0.38)),
+    "pelican": ((0.94, 0.94, 0.95), (0.98, 0.96, 0.92), (0.95, 0.55, 0.22)),
+    "gull":    ((0.92, 0.92, 0.94), (0.98, 0.98, 0.98), (0.55, 0.58, 0.62)),
+}
+
 
 def make_creature(name: str, kind: str):
     clear_scene()
-    tex = IMAGINE / "creatures" / f"{name}.png"
-    mat = mat_tex(f"{name}_mat", tex, color=(0.4, 0.55, 0.65, 1), size=512)
+    # Dispatch on asset name (kind is a loose shape family: shark/jelly/ray/bird/creature)
+    k = name.lower()
+    body_c, belly_c, accent_c = CREATURE_PALETTES.get(
+        k, ((0.4, 0.55, 0.65), (0.8, 0.85, 0.9), (0.3, 0.35, 0.4))
+    )
+    body_mat = mat_solid(f"{name}_body", body_c, 0.52)
+    belly_mat = mat_solid(f"{name}_belly", belly_c, 0.55)
+    accent_mat = mat_solid(f"{name}_accent", accent_c, 0.48)
+    # Full-portrait UV spray reads muddy on blob meshes — solid multi-mats stay crisp.
+    # Polished Imagine PNGs remain for billboard fallbacks in the game client.
 
     bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
     root = bpy.context.active_object
     root.name = name
     parts = []
 
-    k = kind.lower()
     if k == "shark":
-        body = sphere("body", 0.28, (0, 0, 0.32), mat, scale=(2.2, 0.65, 0.72), segs=12)
-        snout = sphere("snout", 0.14, (0.55, 0, 0.3), mat, scale=(1.3, 0.65, 0.6), segs=8)
-        dorsal = sphere("dorsal", 0.12, (0.05, 0, 0.58), mat, scale=(1.2, 0.2, 1.1), segs=8)
+        body = sphere("body", 0.28, (0, 0, 0.32), body_mat, scale=(2.2, 0.65, 0.72), segs=12)
+        belly = sphere("belly", 0.22, (0.05, 0, 0.22), belly_mat, scale=(2.0, 0.5, 0.45), segs=8)
+        snout = sphere("snout", 0.14, (0.55, 0, 0.3), body_mat, scale=(1.3, 0.65, 0.6), segs=8)
+        dorsal = sphere("dorsal", 0.12, (0.05, 0, 0.58), accent_mat, scale=(1.2, 0.2, 1.1), segs=8)
         for sx in (-1, 1):
-            parts.append(sphere(f"pec_{sx}", 0.1, (-0.05, sx * 0.28, 0.26), mat, scale=(1.2, 1.5, 0.15), segs=8))
-        tail = sphere("tail", 0.14, (-0.65, 0, 0.35), mat, scale=(0.9, 0.2, 1.4), segs=8)
-        parts += [body, snout, dorsal, tail]
+            parts.append(sphere(f"pec_{sx}", 0.1, (-0.05, sx * 0.28, 0.26), body_mat, scale=(1.2, 1.5, 0.15), segs=8))
+        tail = sphere("tail", 0.14, (-0.65, 0, 0.35), accent_mat, scale=(0.9, 0.2, 1.4), segs=8)
+        # Friendly eye dots
+        for sy in (-1, 1):
+            parts.append(sphere(f"eye_{sy}", 0.035, (0.48, sy * 0.08, 0.38), mat_solid(f"{name}_eye", (0.08, 0.08, 0.1), 0.35), segs=6))
+        parts += [body, belly, snout, dorsal, tail]
     elif k == "jelly":
-        bell = sphere("bell", 0.38, (0, 0, 0.5), mat, scale=(1.05, 1.05, 0.7), segs=12)
-        parts = [bell]
+        bell = sphere("bell", 0.38, (0, 0, 0.5), body_mat, scale=(1.05, 1.05, 0.7), segs=12)
+        glow = sphere("glow", 0.22, (0, 0, 0.48), belly_mat, scale=(1.0, 1.0, 0.55), segs=8)
+        parts = [bell, glow]
         for i in range(5):
             a = i * (2 * math.pi / 5)
             parts.append(
@@ -381,45 +408,148 @@ def make_creature(name: str, kind: str):
                     0.025,
                     0.5,
                     (math.cos(a) * 0.12, math.sin(a) * 0.12, 0.15),
-                    mat,
+                    accent_mat,
                     verts=6,
                 )
             )
-    elif k in ("gull", "pelican", "bird"):
-        body = sphere("body", 0.22, (0, 0, 0.35), mat, scale=(1.3, 0.85, 0.9), segs=10)
-        head = sphere("head", 0.12, (0.28, 0, 0.45), mat, segs=8)
-        beak = cyl("beak", 0.03, 0.18, (0.42, 0, 0.42), mat, scale=(1, 0.6, 0.5), verts=6)
+        # Cute face — small dark eyes
+        for sy in (-1, 1):
+            parts.append(sphere(f"eye_{sy}", 0.03, (0.12, sy * 0.1, 0.55), mat_solid(f"{name}_eye", (0.12, 0.1, 0.15), 0.4), segs=6))
+    elif k in ("gull", "pelican"):
+        body = sphere("body", 0.22, (0, 0, 0.35), body_mat, scale=(1.3, 0.85, 0.9), segs=10)
+        head = sphere("head", 0.12, (0.28, 0, 0.45), belly_mat, segs=8)
+        beak = cyl(
+            "beak",
+            0.03,
+            0.28 if k == "pelican" else 0.18,
+            (0.42, 0, 0.42),
+            accent_mat,
+            scale=(1, 0.6, 0.5),
+            verts=6,
+        )
         beak.rotation_euler[1] = math.radians(90)
         bpy.context.view_layer.objects.active = beak
         bpy.ops.object.transform_apply(rotation=True)
         parts = [body, head, beak]
+        if k == "pelican":
+            pouch = sphere("pouch", 0.08, (0.4, 0, 0.32), accent_mat, scale=(1.4, 0.7, 0.9), segs=6)
+            parts.append(pouch)
         for sx in (-1, 1):
-            parts.append(sphere(f"wing_{sx}", 0.14, (0, sx * 0.35, 0.38), mat, scale=(1.0, 1.8, 0.15), segs=8))
+            wing_mat = accent_mat if k == "gull" else body_mat
+            parts.append(
+                sphere(f"wing_{sx}", 0.14, (0, sx * 0.35, 0.38), wing_mat, scale=(1.0, 1.8, 0.15), segs=8)
+            )
+        for sy in (-1, 1):
+            parts.append(
+                sphere(
+                    f"eye_{sy}",
+                    0.025,
+                    (0.34, sy * 0.05, 0.5),
+                    mat_solid(f"{name}_eye", (0.1, 0.08, 0.06), 0.4),
+                    segs=6,
+                )
+            )
+    elif k == "ray":
+        body = sphere("body", 0.28, (0, 0, 0.32), body_mat, scale=(1.6, 0.55, 0.45), segs=12)
+        belly = sphere("belly", 0.2, (0.05, 0, 0.22), belly_mat, scale=(1.4, 0.45, 0.25), segs=8)
+        nose = sphere("nose", 0.1, (0.48, 0, 0.28), body_mat, scale=(1.2, 0.7, 0.55), segs=8)
+        tail = sphere("tail", 0.08, (-0.55, 0, 0.32), accent_mat, scale=(2.2, 0.2, 0.35), segs=6)
+        parts = [body, belly, nose, tail]
+        for sx in (-1, 1):
+            parts.append(
+                sphere(f"wing_{sx}", 0.22, (0, sx * 0.45, 0.28), body_mat, scale=(1.4, 1.8, 0.1), segs=8)
+            )
+        for sy in (-1, 1):
+            parts.append(
+                sphere(
+                    f"eye_{sy}",
+                    0.03,
+                    (0.35, sy * 0.12, 0.38),
+                    mat_solid(f"{name}_eye", (0.08, 0.08, 0.1), 0.35),
+                    segs=6,
+                )
+            )
+    elif k == "sealion":
+        body = sphere("body", 0.3, (0, 0, 0.32), body_mat, scale=(1.6, 0.85, 0.9), segs=12)
+        belly = sphere("belly", 0.22, (0.05, 0, 0.22), belly_mat, scale=(1.3, 0.7, 0.55), segs=8)
+        head = sphere("head", 0.16, (0.42, 0, 0.38), body_mat, scale=(1.1, 0.95, 0.95), segs=10)
+        snout = sphere("snout", 0.08, (0.58, 0, 0.34), belly_mat, scale=(1.1, 0.85, 0.7), segs=6)
+        tail = sphere("tail", 0.12, (-0.48, 0, 0.3), accent_mat, scale=(0.9, 0.35, 1.1), segs=8)
+        parts = [body, belly, head, snout, tail]
+        for sx in (-1, 1):
+            parts.append(
+                sphere(f"flip_{sx}", 0.12, (0.05, sx * 0.32, 0.28), body_mat, scale=(1.0, 1.6, 0.2), segs=8)
+            )
+        for sy in (-1, 1):
+            parts.append(
+                sphere(
+                    f"eye_{sy}",
+                    0.04,
+                    (0.5, sy * 0.08, 0.46),
+                    mat_solid(f"{name}_eye", (0.06, 0.06, 0.08), 0.3),
+                    segs=6,
+                )
+            )
+    elif k == "angler":
+        body = sphere("body", 0.32, (0, 0, 0.32), body_mat, scale=(1.3, 1.05, 1.0), segs=12)
+        belly = sphere("belly", 0.2, (0.08, 0, 0.22), belly_mat, scale=(1.1, 0.9, 0.6), segs=8)
+        tail = sphere("tail", 0.12, (-0.4, 0, 0.35), body_mat, scale=(0.7, 0.25, 1.2), segs=8)
+        # Lantern stalk + glow (friendly, not scary)
+        stalk = cyl("stalk", 0.02, 0.28, (0.22, 0, 0.55), body_mat, verts=6)
+        stalk.rotation_euler[1] = math.radians(-35)
+        bpy.context.view_layer.objects.active = stalk
+        bpy.ops.object.transform_apply(rotation=True)
+        lamp = sphere("lamp", 0.08, (0.38, 0, 0.68), accent_mat, segs=8)
+        parts = [body, belly, tail, stalk, lamp]
+        for sx in (-1, 1):
+            parts.append(
+                sphere(f"fin_{sx}", 0.08, (-0.05, sx * 0.28, 0.3), body_mat, scale=(0.9, 1.2, 0.25), segs=6)
+            )
+        for sy in (-1, 1):
+            parts.append(
+                sphere(
+                    f"eye_{sy}",
+                    0.06,
+                    (0.22, sy * 0.12, 0.42),
+                    mat_solid(f"{name}_eye", (0.15, 0.35, 0.7), 0.25),
+                    segs=6,
+                )
+            )
     else:
-        # elongated swimmer: ray / marlin / sealion / angler
-        body = sphere("body", 0.28, (0, 0, 0.32), mat, scale=(2.0, 0.65, 0.7), segs=12)
-        nose = sphere("nose", 0.12, (0.55, 0, 0.32), mat, scale=(1.4, 0.6, 0.55), segs=8)
-        tail = sphere("tail", 0.12, (-0.55, 0, 0.32), mat, scale=(1.0, 0.25, 1.2), segs=8)
-        parts = [body, nose, tail]
-        if k == "ray":
-            for sx in (-1, 1):
-                parts.append(sphere(f"wing_{sx}", 0.2, (0, sx * 0.4, 0.28), mat, scale=(1.3, 1.6, 0.12), segs=8))
+        # marlin / generic elongated swimmer
+        body = sphere("body", 0.26, (0, 0, 0.32), body_mat, scale=(2.2, 0.55, 0.65), segs=12)
+        belly = sphere("belly", 0.18, (0.05, 0, 0.22), belly_mat, scale=(2.0, 0.45, 0.4), segs=8)
+        nose = sphere("nose", 0.08, (0.7, 0, 0.34), body_mat, scale=(2.8, 0.35, 0.35), segs=6)  # bill
+        dorsal = sphere("dorsal", 0.14, (0.0, 0, 0.58), body_mat, scale=(1.6, 0.12, 1.3), segs=8)
+        tail = sphere("tail", 0.12, (-0.6, 0, 0.32), accent_mat, scale=(0.7, 0.2, 1.3), segs=8)
+        stripe = sphere("stripe", 0.16, (0.0, 0, 0.36), accent_mat, scale=(2.0, 0.15, 0.35), segs=6)
+        parts = [body, belly, nose, dorsal, tail, stripe]
+        for sx in (-1, 1):
+            parts.append(
+                sphere(f"pec_{sx}", 0.08, (0.05, sx * 0.22, 0.28), body_mat, scale=(1.0, 1.4, 0.15), segs=6)
+            )
+        for sy in (-1, 1):
+            parts.append(
+                sphere(
+                    f"eye_{sy}",
+                    0.03,
+                    (0.4, sy * 0.07, 0.4),
+                    mat_solid(f"{name}_eye", (0.08, 0.08, 0.1), 0.35),
+                    segs=6,
+                )
+            )
 
-    # Parent all under root then join into single mesh for weight
+    # Keep multi-material parts separate (don't join) for readable solid colors
     for o in parts:
         o.parent = root
         o.matrix_parent_inverse = root.matrix_world.inverted()
-
-    body = join_named(parts, f"{name}_body")
-    body.parent = root
-    smart_uv(body)
-    assign(body, mat)
-    decimate(body, 700)
-    smooth(body)
+        decimate(o, 180)
+        smooth(o)
 
     plant_and_scale(root, 1.2 if k != "jelly" else 1.0)
     export_glb(OUT_CREATURES / f"{name}.glb")
-    print(f"{name} faces", len(body.data.polygons))
+    faces = sum(len(o.data.polygons) for o in parts if o.type == "MESH")
+    print(f"{name} faces", faces, "parts", len(parts))
 
 
 def make_prop(name: str, kind: str):
