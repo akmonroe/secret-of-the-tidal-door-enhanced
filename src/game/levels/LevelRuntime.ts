@@ -389,9 +389,10 @@ export class LevelRuntime {
   }
 
   /**
-   * Compass bearing for the HUD.
-   * Returns degrees for CSS rotate() so "up on dial" = direction to the
-   * level clue/treasure relative to the player's facing on XZ.
+   * Compass bearing for the HUD (world-fixed).
+   * Returns degrees for CSS rotate() so the needle always points at the
+   * clue on a dial where up = North (−Z), right = East (+X) — independent
+   * of which way the player is facing.
    * null when there is no active target (already collected / missing).
    */
   getCompassBearingDeg(): number | null {
@@ -399,10 +400,9 @@ export class LevelRuntime {
     const dx = this.clueMesh.position.x - this.player.position.x;
     const dz = this.clueMesh.position.z - this.player.position.z;
     if (dx * dx + dz * dz < 1e-6) return 0;
-    const toTreasure = Math.atan2(dx, dz);
-    const facing = Math.atan2(this.player.facing.x, this.player.facing.z);
-    // CSS rotate is clockwise-positive from "up"; negate so ahead = needle up
-    return ((-(toTreasure - facing) * 180) / Math.PI + 540) % 360 - 180;
+    // 0° = north (−Z), clockwise positive (matches CSS rotate + NESW marks)
+    const angle = Math.atan2(dx, -dz);
+    return (angle * 180) / Math.PI;
   }
 
   /** True after the level clue was collected this run. */

@@ -71,14 +71,20 @@ export const LEVELS: LevelDef[] = [
     objective: "Head EAST to the stilt house · Clue SUN",
     hint: "Travel EAST. Stay inside the map rim — past the edge you fall and restart the whole game!",
     hazards: [
-      { kind: "shark", c: 28, r: 63, speed: 1.76, axis: "x" },
-      { kind: "shark", c: 43, r: 61, speed: 1.81, axis: "z" },
-      { kind: "shark", c: 62, r: 67, speed: 1.87, axis: "x" },
-      { kind: "jelly", c: 52, r: 22, speed: 1.09, axis: "z" },
-      { kind: "jelly", c: 95, r: 71, speed: 1.13, axis: "x" },
-      { kind: "jelly", c: 98, r: 49, speed: 1.16, axis: "diag" },
-      { kind: "ray", c: 118, r: 57, speed: 1.52, axis: "x" },
-      { kind: "ray", c: 119, r: 30, speed: 1.57, axis: "z" },
+      { kind: "shark", c: 28, r: 63, speed: 2.05, axis: "x" },
+      { kind: "shark", c: 43, r: 61, speed: 2.1, axis: "z" },
+      { kind: "shark", c: 62, r: 67, speed: 2.15, axis: "x" },
+      { kind: "shark", c: 80, r: 40, speed: 2.0, axis: "z" },
+      { kind: "shark", c: 100, r: 55, speed: 2.08, axis: "x" },
+      { kind: "jelly", c: 52, r: 22, speed: 1.2, axis: "z" },
+      { kind: "jelly", c: 95, r: 71, speed: 1.25, axis: "x" },
+      { kind: "jelly", c: 98, r: 49, speed: 1.22, axis: "diag" },
+      { kind: "jelly", c: 70, r: 35, speed: 1.18, axis: "x" },
+      { kind: "ray", c: 118, r: 57, speed: 1.85, axis: "x" },
+      { kind: "ray", c: 119, r: 30, speed: 1.9, axis: "z" },
+      { kind: "ray", c: 55, r: 50, speed: 1.8, axis: "diag" },
+      { kind: "sealion", c: 90, r: 60, speed: 2.2, axis: "x" },
+      { kind: "gull", c: 40, r: 70, speed: 2.5, axis: "z" },
     ],
     movers: [
       { c: 36, r: 68, axis: "x", travel: 4.5, speed: 1.65, phase: 0.0, color: 0x8b7355, width: 2.0, depth: 1.3 },
@@ -107,15 +113,18 @@ export const LEVELS: LevelDef[] = [
     objective: "Travel WEST through the halls · Clue SALT",
     hint: "You start on the EAST side — keep heading WEST. Time crate gaps, then dash.",
     hazards: [
-      { kind: "pelican", c: 135, r: 73, speed: 1.8, axis: "x" },
-      { kind: "pelican", c: 120, r: 54, speed: 1.86, axis: "z" },
-      { kind: "pelican", c: 105, r: 47, speed: 1.92, axis: "x" },
-      { kind: "pelican", c: 90, r: 72, speed: 1.8, axis: "z" },
-      { kind: "gull", c: 75, r: 33, speed: 2.3, axis: "x" },
-      { kind: "gull", c: 60, r: 14, speed: 2.37, axis: "z" },
-      { kind: "gull", c: 45, r: 5, speed: 2.23, axis: "z" },
-      { kind: "gull", c: 30, r: 67, speed: 2.3, axis: "x" },
-      { kind: "gull", c: 15, r: 59, speed: 2.37, axis: "diag" },
+      { kind: "pelican", c: 135, r: 73, speed: 2.05, axis: "x" },
+      { kind: "pelican", c: 120, r: 54, speed: 2.1, axis: "z" },
+      { kind: "pelican", c: 105, r: 47, speed: 2.15, axis: "x" },
+      { kind: "pelican", c: 90, r: 72, speed: 2.05, axis: "z" },
+      { kind: "pelican", c: 70, r: 40, speed: 2.0, axis: "x" },
+      { kind: "gull", c: 75, r: 33, speed: 2.55, axis: "x" },
+      { kind: "gull", c: 60, r: 14, speed: 2.6, axis: "z" },
+      { kind: "gull", c: 45, r: 5, speed: 2.5, axis: "z" },
+      { kind: "gull", c: 30, r: 67, speed: 2.55, axis: "x" },
+      { kind: "gull", c: 15, r: 59, speed: 2.6, axis: "diag" },
+      { kind: "gull", c: 50, r: 50, speed: 2.45, axis: "x" },
+      { kind: "gull", c: 110, r: 20, speed: 2.5, axis: "z" },
     ],
     movers: [
       { c: 128, r: 43, axis: "x", travel: 4.5, speed: 1.65, phase: 0.0, color: 0x8b5a2b, width: 1.7, depth: 1.15, height: 1.2 },
@@ -144,16 +153,21 @@ export const LEVELS: LevelDef[] = [
     objective: "Dive SOUTH through the reef · Clue BREATH",
     hint: "You start at the NORTH reef — keep swimming SOUTH. Use gate timing in the canyons.",
     hazards: [
-      { kind: "shark", c: 25, r: 28, speed: 1.76, axis: "x" },
-      { kind: "shark", c: 43, r: 28, speed: 1.81, axis: "z" },
-      { kind: "shark", c: 72, r: 9, speed: 1.87, axis: "x" },
-      { kind: "shark", c: 71, r: 27, speed: 1.76, axis: "z" },
-      { kind: "jelly", c: 49, r: 71, speed: 1.13, axis: "diag" },
-      { kind: "jelly", c: 113, r: 7, speed: 1.16, axis: "x" },
-      { kind: "jelly", c: 102, r: 37, speed: 1.09, axis: "z" },
-      { kind: "ray", c: 79, r: 82, speed: 1.57, axis: "z" },
-      { kind: "ray", c: 120, r: 48, speed: 1.62, axis: "x" },
-      { kind: "ray", c: 124, r: 66, speed: 1.52, axis: "z" },
+      { kind: "shark", c: 25, r: 28, speed: 2.1, axis: "x" },
+      { kind: "shark", c: 43, r: 28, speed: 2.15, axis: "z" },
+      { kind: "shark", c: 72, r: 9, speed: 2.2, axis: "x" },
+      { kind: "shark", c: 71, r: 27, speed: 2.1, axis: "z" },
+      { kind: "shark", c: 90, r: 50, speed: 2.05, axis: "x" },
+      { kind: "jelly", c: 49, r: 71, speed: 1.25, axis: "diag" },
+      { kind: "jelly", c: 113, r: 7, speed: 1.28, axis: "x" },
+      { kind: "jelly", c: 102, r: 37, speed: 1.22, axis: "z" },
+      { kind: "jelly", c: 60, r: 40, speed: 1.2, axis: "x" },
+      { kind: "ray", c: 79, r: 82, speed: 1.9, axis: "z" },
+      { kind: "ray", c: 120, r: 48, speed: 1.95, axis: "x" },
+      { kind: "ray", c: 124, r: 66, speed: 1.85, axis: "z" },
+      { kind: "sealion", c: 55, r: 55, speed: 2.25, axis: "x" },
+      { kind: "sealion", c: 100, r: 25, speed: 2.3, axis: "z" },
+      { kind: "angler", c: 110, r: 70, speed: 1.85, axis: "diag", hunts: true },
     ],
     movers: [
       { c: 35, r: 25, axis: "x", travel: 4.5, speed: 1.65, phase: 0.1, color: 0x4a6741, width: 1.9, depth: 1.25, height: 1.5 },
@@ -183,16 +197,20 @@ export const LEVELS: LevelDef[] = [
     objective: "Weave NORTH-EAST to the cabin · Clue GOLD",
     hint: "Start SOUTH-WEST — work your way NORTH and EAST. Side channels save you from bulkheads.",
     hazards: [
-      { kind: "shark", c: 20, r: 61, speed: 1.76, axis: "x" },
-      { kind: "shark", c: 43, r: 70, speed: 1.81, axis: "x" },
-      { kind: "shark", c: 14, r: 5, speed: 1.87, axis: "x" },
-      { kind: "jelly", c: 75, r: 76, speed: 1.09, axis: "x" },
-      { kind: "jelly", c: 42, r: 5, speed: 1.13, axis: "x" },
-      { kind: "jelly", c: 93, r: 61, speed: 1.16, axis: "x" },
-      { kind: "ray", c: 74, r: 11, speed: 1.52, axis: "x" },
-      { kind: "ray", c: 133, r: 79, speed: 1.57, axis: "x" },
-      { kind: "ray", c: 138, r: 65, speed: 1.62, axis: "x" },
-      { kind: "ray", c: 119, r: 9, speed: 1.52, axis: "x" },
+      { kind: "shark", c: 20, r: 61, speed: 2.15, axis: "x" },
+      { kind: "shark", c: 43, r: 70, speed: 2.2, axis: "x" },
+      { kind: "shark", c: 14, r: 5, speed: 2.25, axis: "x" },
+      { kind: "shark", c: 60, r: 40, speed: 2.1, axis: "z" },
+      { kind: "jelly", c: 75, r: 76, speed: 1.25, axis: "x" },
+      { kind: "jelly", c: 42, r: 5, speed: 1.28, axis: "x" },
+      { kind: "jelly", c: 93, r: 61, speed: 1.3, axis: "x" },
+      { kind: "ray", c: 74, r: 11, speed: 1.9, axis: "x" },
+      { kind: "ray", c: 133, r: 79, speed: 1.95, axis: "x" },
+      { kind: "ray", c: 138, r: 65, speed: 2.0, axis: "x" },
+      { kind: "ray", c: 119, r: 9, speed: 1.9, axis: "x" },
+      { kind: "sealion", c: 50, r: 50, speed: 2.35, axis: "z" },
+      { kind: "marlin", c: 100, r: 30, speed: 2.6, axis: "x", lethal: true },
+      { kind: "angler", c: 80, r: 55, speed: 1.95, axis: "diag" },
     ],
     movers: [
       { c: 19, r: 53, axis: "x", travel: 4.5, speed: 1.65, phase: 0.0, color: 0x5c4033, width: 2.2, depth: 1.15, height: 1.7 },
@@ -206,17 +224,29 @@ export const LEVELS: LevelDef[] = [
   },
 ];
 
-/** Duplicate every spawn with a small offset so density doubles without stacking. */
-function doubleHazards(list: HazardSpawn[]): HazardSpawn[] {
-  const extra: HazardSpawn[] = list.map((h, i) => ({
-    ...h,
-    c: h.c + (i % 2 === 0 ? 4 : -4),
-    r: h.r + (i % 3 === 0 ? 3 : -3),
-    axis:
-      h.axis === "x" ? "z" : h.axis === "z" ? "x" : h.axis === "diag" ? "x" : "diag",
-    speed: h.speed !== undefined ? h.speed * (0.92 + (i % 3) * 0.04) : h.speed,
-  }));
-  return [...list, ...extra];
+/** Triple density: original + two offset packs (varied axis/species spacing). */
+function densifyHazards(list: HazardSpawn[]): HazardSpawn[] {
+  const pack = (offsetC: number, offsetR: number, speedMul: number, flipAxis: boolean) =>
+    list.map((h, i) => ({
+      ...h,
+      c: h.c + (i % 2 === 0 ? offsetC : -offsetC) + (i % 5) - 2,
+      r: h.r + (i % 3 === 0 ? offsetR : -offsetR) + ((i * 2) % 5) - 2,
+      axis: flipAxis
+        ? h.axis === "x"
+          ? ("z" as const)
+          : h.axis === "z"
+            ? ("x" as const)
+            : h.axis === "diag"
+              ? ("x" as const)
+              : ("diag" as const)
+        : h.axis,
+      speed: h.speed !== undefined ? h.speed * speedMul : h.speed,
+    }));
+  return [
+    ...list,
+    ...pack(5, 4, 0.96, true),
+    ...pack(8, 6, 1.04, false),
+  ];
 }
 
 function doubleMovers(list: MovingObstacleDef[] | undefined): MovingObstacleDef[] | undefined {
@@ -236,9 +266,9 @@ function doubleMovers(list: MovingObstacleDef[] | undefined): MovingObstacleDef[
 // Append seas 5–12 (growing maps, currents, vents, lethal hunters)
 LEVELS.push(...LEVELS_5_TO_12);
 
-// Apply double density to all levels
+// Apply dense spawns to all levels (~3× base lists)
 for (const level of LEVELS) {
-  level.hazards = doubleHazards(level.hazards);
+  level.hazards = densifyHazards(level.hazards);
   level.movers = doubleMovers(level.movers);
 }
 

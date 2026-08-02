@@ -294,15 +294,39 @@ body {
   pointer-events: none;
 }
 
-.compass-mark.n {
+.compass-mark {
   position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(168, 218, 220, 0.75);
+  color: rgba(168, 218, 220, 0.8);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.compass-mark.n {
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffd166;
+}
+
+.compass-mark.e {
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.compass-mark.s {
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.compass-mark.w {
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .compass-needle {

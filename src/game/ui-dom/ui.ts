@@ -51,6 +51,9 @@ export class GameUI {
       <div class="compass-dial">
         <div class="compass-ring"></div>
         <div class="compass-mark n">N</div>
+        <div class="compass-mark e">E</div>
+        <div class="compass-mark s">S</div>
+        <div class="compass-mark w">W</div>
         <div class="compass-needle" id="compass-needle">
           <span class="compass-arrow-head"></span>
           <span class="compass-arrow-tail"></span>
@@ -206,8 +209,8 @@ export class GameUI {
   }
 
   /**
-   * Rotate compass needle so "up" = world direction to the clue relative to
-   * player facing. Pass null / found=true after the treasure is collected.
+   * Rotate compass needle so it always points at the clue on a world-fixed
+   * NESW dial (independent of player facing). Pass found=true after collect.
    */
   updateCompass(bearingDeg: number | null, found = false): void {
     if (found || bearingDeg === null) {

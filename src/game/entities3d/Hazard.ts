@@ -82,28 +82,30 @@ export class Hazard {
     this.lethal = opts.lethal ?? (kind === "angler" || kind === "marlin");
     const defaultSpeed =
       kind === "gull"
-        ? 2.35
+        ? 2.7
         : kind === "jelly"
-          ? 1.15
+          ? 1.35
           : kind === "marlin"
-            ? 2.55
+            ? 2.95
             : kind === "angler"
-              ? 1.55
+              ? 1.85
               : kind === "sealion"
-                ? 2.15
-                : 1.9;
+                ? 2.45
+                : 2.2;
     this.patrolSpeed = opts.speed ?? defaultSpeed;
     this.speed = this.patrolSpeed;
     this.t = Math.random() * Math.PI * 2;
     this.homeX = x;
     this.homeZ = z;
-    // Stay near spawn corridor so wide maps don't empty of patrols
+    // Wider leash so hunters can cross more of the maze while chasing
     this.leash =
       kind === "marlin" || kind === "angler"
-        ? 10 + Math.random() * 5
-        : 7 + Math.random() * 4;
+        ? 16 + Math.random() * 6
+        : kind === "jelly"
+          ? 9 + Math.random() * 3
+          : 12 + Math.random() * 5;
 
-    // Who hunts: predators yes; jellies no
+    // Who hunts: predators yes; jellies soft-drift only
     if (opts.hunts !== undefined) this.hunts = opts.hunts;
     else
       this.hunts =
@@ -115,23 +117,23 @@ export class Hazard {
         kind === "angler" ||
         kind === "marlin";
 
-    // Mild chase radii (world units, CELL=1) — bosses a bit farther
+    // Aggressive chase radii (world units, CELL=1)
     this.chaseRange =
       opts.chaseRange ??
       (kind === "gull"
-        ? 3.4
+        ? 6.5
         : kind === "shark"
-          ? 4.0
+          ? 7.5
           : kind === "pelican"
-            ? 3.6
+            ? 6.8
             : kind === "ray"
-              ? 2.6
+              ? 5.5
               : kind === "sealion"
-                ? 3.8
+                ? 7.0
                 : kind === "marlin"
-                  ? 5.2
+                  ? 9.5
                   : kind === "angler"
-                    ? 4.6
+                    ? 8.5
                     : 0);
 
     if (kind === "jelly") {
@@ -251,45 +253,50 @@ export class Hazard {
         );
 
       if (canSee) {
-        if (this.chaseBurst <= 0 && !wasChasing) {
-          // Fresh brief burst — rays shortest; bosses hold longer
+        // Refresh burst while player is still visible — sustained pursuit
+        if (this.chaseBurst <= 0.35) {
           this.chaseBurst =
             this.kind === "ray"
-              ? 0.65 + Math.random() * 0.35
+              ? 1.4 + Math.random() * 0.5
               : this.kind === "gull"
-                ? 0.85 + Math.random() * 0.45
+                ? 1.8 + Math.random() * 0.6
                 : this.kind === "marlin"
-                  ? 1.35 + Math.random() * 0.55
+                  ? 2.8 + Math.random() * 0.8
                   : this.kind === "angler"
-                    ? 1.2 + Math.random() * 0.5
-                    : 0.95 + Math.random() * 0.5;
+                    ? 2.4 + Math.random() * 0.7
+                    : 2.0 + Math.random() * 0.7;
         }
         if (this.chaseBurst > 0) {
           chasing = true;
           const mult =
             this.kind === "gull"
-              ? 1.1
+              ? 1.38
               : this.kind === "ray"
-                ? 1.04
+                ? 1.28
                 : this.kind === "marlin"
-                  ? 1.18
+                  ? 1.55
                   : this.kind === "angler"
-                    ? 1.12
-                    : 1.08;
+                    ? 1.42
+                    : this.kind === "shark"
+                      ? 1.4
+                      : this.kind === "sealion"
+                        ? 1.36
+                        : 1.32;
           const chaseSp = this.patrolSpeed * mult;
-          this.vx += (dx / dist) * chaseSp * 2.2 * dt;
-          this.vz += (dz / dist) * chaseSp * 2.2 * dt;
+          // Strong steer toward player
+          this.vx += (dx / dist) * chaseSp * 3.4 * dt;
+          this.vz += (dz / dist) * chaseSp * 3.4 * dt;
           this.speed = chaseSp;
         }
       } else if (wasChasing || this.chaseBurst > 0) {
-        // Lost LOS or left range mid-chase — fair drop-off, not wall-hunting
-        this.endChase(1.1 + Math.random() * 0.7);
+        // Lost LOS — short cool-down then re-engage
+        this.endChase(0.35 + Math.random() * 0.35);
       }
     }
 
-    // Burst timer expired → cool down so kids get a readable safe window
+    // Burst expired → brief rest only
     if (wasChasing && this.chaseBurst <= 0 && !chasing) {
-      this.endChase(1.4 + Math.random() * 0.9);
+      this.endChase(0.45 + Math.random() * 0.4);
     }
 
     if (!chasing) {
@@ -377,12 +384,20 @@ export class Hazard {
     }
 
     if (bounced) {
-      this.bounceLock = 0.1;
+      this.bounceLock = 0.08;
       if (Math.random() < 0.45) this.pickNewDirection();
-      // Don't keep pressing into geometry while "chasing"
-      if (chasing) {
-        this.endChase(0.8 + Math.random() * 0.5);
-        chasing = false;
+      // While chasing, re-aim at player instead of fully giving up
+      if (chasing && playerX !== undefined && playerZ !== undefined) {
+        const dx = playerX - this.group.position.x;
+        const dz = playerZ - this.group.position.z;
+        const d = Math.hypot(dx, dz) || 1;
+        this.vx = (dx / d) * this.speed;
+        this.vz = (dz / d) * this.speed;
+        // Tiny cooldown only if wedged hard
+        if (this.stuckTimer > 0.6) {
+          this.endChase(0.25 + Math.random() * 0.2);
+          chasing = false;
+        }
       }
     }
 
