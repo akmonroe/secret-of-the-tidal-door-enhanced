@@ -369,61 +369,23 @@ export function makeCluePedestal(): THREE.Group {
   return g;
 }
 
+/**
+ * 3D kid adventurer (always mesh-based — Imagine cannot export 3D).
+ * Imagine portraits are applied as a face card on the head for soft-realism.
+ * Scuba gear lives in `userData.scubaGear` and is toggled when swimming underwater.
+ */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
-  // Prefer Imagine soft-realism sprites when the enhanced pack is enabled
-  const spriteKey: ImagineSpriteKey =
-    character === "girl" ? "adventurer_girl" : "adventurer_boy";
-  const billboard = makeImagineBillboard(spriteKey, 1.55, 1.95);
-  if (billboard) {
-    const g = new THREE.Group();
-    const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(0.48, 16),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 }),
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.02;
-    g.add(shadow);
-    // Slight scuba tint ring so kids still see tank mode
-    if (scuba) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.55, 0.05, 6, 20),
-        new THREE.MeshBasicMaterial({
-          color: 0x3db8ff,
-          transparent: true,
-          opacity: 0.55,
-        }),
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.06;
-      g.add(ring);
-    }
-    billboard.position.y = 0.95;
-    g.add(billboard);
-    g.userData = {
-      imagineMode: true,
-      billboard,
-      shadow,
-      // Stubs so animate paths that expect limbs don't crash if called
-      hips: g,
-      legL: g,
-      legR: g,
-      armL: g,
-      armR: g,
-      head: billboard,
-      torso: billboard,
-    };
-    return g;
-  }
-
   const g = new THREE.Group();
-  // Slightly more saturated Crossy-style palette
-  const skin = character === "girl" ? 0xe8b888 : 0xd4955a;
-  const hair = character === "girl" ? 0x6b3a28 : 0x3a2820;
-  const shirt = scuba ? 0x1e4d8c : character === "girl" ? 0xff6b4a : 0x2ecf9a;
-  const pants = scuba ? 0x163a6b : character === "girl" ? 0xffb347 : 0x3d7acc;
+  // Land palette (walk) vs wetsuit (scuba swim) — materials swap visibility
+  const skin = character === "girl" ? 0xf0c090 : 0xdf9a58;
+  const hair = character === "girl" ? 0x6b3a28 : 0x2a2018;
+  const shirtLand = character === "girl" ? 0xff6b4a : 0x2ecf9a;
+  const pantsLand = character === "girl" ? 0xffb347 : 0x3d7acc;
+  const suit = 0x1e4d8c;
+  const suitDark = 0x163a6b;
 
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.45, 16),
+    new THREE.CircleGeometry(0.48, 16),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }),
   );
   shadow.rotation.x = -Math.PI / 2;
@@ -434,83 +396,231 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
   hips.position.y = 0.55;
   g.add(hips);
 
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.35, 4, 8), toon(shirt));
-  torso.position.y = 0.35;
-  torso.castShadow = true;
-  hips.add(torso);
+  // --- Body ---
+  const torsoLand = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.3, 0.38, 5, 10),
+    toon(shirtLand),
+  );
+  torsoLand.position.y = 0.36;
+  torsoLand.castShadow = true;
+  hips.add(torsoLand);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), toon(skin));
-  head.position.y = 0.85;
+  const torsoSuit = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.31, 0.38, 5, 10),
+    toon(suit),
+  );
+  torsoSuit.position.y = 0.36;
+  torsoSuit.castShadow = true;
+  torsoSuit.visible = false;
+  hips.add(torsoSuit);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 12), toon(skin));
+  head.position.y = 0.88;
   head.castShadow = true;
   hips.add(head);
 
+  // Imagine face card (soft-realism portrait) on the front of the head
+  const faceKey: ImagineSpriteKey =
+    character === "girl" ? "adventurer_girl" : "adventurer_boy";
+  const faceBillboard = makeImagineBillboard(faceKey, 0.62, 0.72);
+  if (faceBillboard) {
+    faceBillboard.position.set(0, 0.88, 0.22);
+    faceBillboard.scale.setScalar(1);
+    // Plane already centered; pull slightly out from head
+    hips.add(faceBillboard);
+    g.userData.faceCard = faceBillboard;
+  } else {
+    // Fallback eyes / smile so the 3D kid still reads without Imagine
+    for (const sx of [-1, 1] as const) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), toon(0x1a1a1a));
+      eye.position.set(sx * 0.1, 0.92, 0.26);
+      hips.add(eye);
+      const white = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), toon(0xffffff));
+      white.position.set(sx * 0.1, 0.92, 0.24);
+      hips.add(white);
+    }
+    const smile = new THREE.Mesh(
+      new THREE.TorusGeometry(0.08, 0.018, 6, 12, Math.PI),
+      toon(0xc45c4a),
+    );
+    smile.position.set(0, 0.8, 0.27);
+    smile.rotation.x = Math.PI;
+    hips.add(smile);
+  }
+
   const hairMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(character === "girl" ? 0.3 : 0.28, 10, 8),
+    new THREE.SphereGeometry(character === "girl" ? 0.32 : 0.3, 12, 10),
     toon(hair),
   );
-  hairMesh.scale.set(1.05, character === "girl" ? 0.85 : 0.65, 1.05);
-  hairMesh.position.y = character === "girl" ? 0.95 : 0.98;
+  hairMesh.scale.set(1.08, character === "girl" ? 0.88 : 0.62, 1.05);
+  hairMesh.position.y = character === "girl" ? 0.98 : 1.02;
   hips.add(hairMesh);
 
   if (character === "girl") {
-    const braid = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.25, 3, 6), toon(hair));
-    braid.position.set(0.22, 0.75, -0.05);
-    braid.rotation.z = -0.4;
+    const braid = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.28, 3, 6), toon(hair));
+    braid.position.set(0.24, 0.78, -0.06);
+    braid.rotation.z = -0.45;
     hips.add(braid);
   }
 
-  const legGeo = new THREE.CapsuleGeometry(0.1, 0.28, 3, 6);
+  // Legs — land pants vs suit
+  const legGeo = new THREE.CapsuleGeometry(0.11, 0.3, 4, 8);
   const legL = new THREE.Group();
-  legL.position.set(-0.12, 0.05, 0);
-  const legLMesh = new THREE.Mesh(legGeo, toon(pants));
-  legLMesh.position.y = -0.28;
-  legLMesh.castShadow = true;
-  legL.add(legLMesh);
+  legL.position.set(-0.13, 0.05, 0);
+  const legLLand = new THREE.Mesh(legGeo, toon(pantsLand));
+  legLLand.position.y = -0.3;
+  legLLand.castShadow = true;
+  legL.add(legLLand);
+  const legLSuit = new THREE.Mesh(legGeo, toon(suitDark));
+  legLSuit.position.y = -0.3;
+  legLSuit.visible = false;
+  legL.add(legLSuit);
 
   const legR = new THREE.Group();
-  legR.position.set(0.12, 0.05, 0);
-  const legRMesh = new THREE.Mesh(legGeo, toon(pants));
-  legRMesh.position.y = -0.28;
-  legRMesh.castShadow = true;
-  legR.add(legRMesh);
+  legR.position.set(0.13, 0.05, 0);
+  const legRLand = new THREE.Mesh(legGeo, toon(pantsLand));
+  legRLand.position.y = -0.3;
+  legRLand.castShadow = true;
+  legR.add(legRLand);
+  const legRSuit = new THREE.Mesh(legGeo, toon(suitDark));
+  legRSuit.position.y = -0.3;
+  legRSuit.visible = false;
+  legR.add(legRSuit);
   hips.add(legL, legR);
 
-  const armGeo = new THREE.CapsuleGeometry(0.08, 0.28, 3, 6);
+  // Arms
+  const armGeo = new THREE.CapsuleGeometry(0.085, 0.3, 4, 8);
   const armL = new THREE.Group();
-  armL.position.set(-0.34, 0.48, 0);
+  armL.position.set(-0.36, 0.5, 0);
   const armLMesh = new THREE.Mesh(armGeo, toon(skin));
-  armLMesh.position.y = -0.22;
+  armLMesh.position.y = -0.24;
   armL.add(armLMesh);
+  const armLSuit = new THREE.Mesh(armGeo, toon(suit));
+  armLSuit.position.y = -0.24;
+  armLSuit.visible = false;
+  armL.add(armLSuit);
 
   const armR = new THREE.Group();
-  armR.position.set(0.34, 0.48, 0);
+  armR.position.set(0.36, 0.5, 0);
   const armRMesh = new THREE.Mesh(armGeo, toon(skin));
-  armRMesh.position.y = -0.22;
+  armRMesh.position.y = -0.24;
   armR.add(armRMesh);
+  const armRSuit = new THREE.Mesh(armGeo, toon(suit));
+  armRSuit.position.y = -0.24;
+  armRSuit.visible = false;
+  armR.add(armRSuit);
   hips.add(armL, armR);
 
-  if (scuba) {
-    // Bright toy tank + mask accents
-    const tank = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.14, 0.14, 0.55, 8),
-      toon(0x4a90c8),
+  // --- Scuba gear (shown only when swimming with scuba unlocked) ---
+  const scubaGear = new THREE.Group();
+  scubaGear.name = "scubaGear";
+  scubaGear.visible = false;
+
+  const tank = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.15, 0.58, 10),
+    toon(0x4a90c8),
+  );
+  tank.position.set(0, 0.42, -0.34);
+  tank.rotation.x = 0.12;
+  tank.castShadow = true;
+  scubaGear.add(tank);
+  const tankBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.16, 0.03, 6, 12),
+    toon(0xffe066),
+  );
+  tankBand.position.set(0, 0.55, -0.34);
+  tankBand.rotation.x = Math.PI / 2;
+  scubaGear.add(tankBand);
+  const valve = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), toon(0xffe066));
+  valve.position.set(0, 0.74, -0.34);
+  scubaGear.add(valve);
+
+  // Mask on face
+  const mask = new THREE.Mesh(
+    new THREE.TorusGeometry(0.17, 0.045, 6, 14),
+    toon(0x3db8ff),
+  );
+  mask.position.set(0, 0.9, 0.28);
+  mask.rotation.x = Math.PI / 2;
+  scubaGear.add(mask);
+  const lens = new THREE.Mesh(
+    new THREE.CircleGeometry(0.14, 12),
+    new THREE.MeshToonMaterial({
+      color: 0x88e0ff,
+      transparent: true,
+      opacity: 0.45,
+    }),
+  );
+  lens.position.set(0, 0.9, 0.3);
+  scubaGear.add(lens);
+
+  // Snorkel / regulator hose
+  const hose = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6),
+    toon(0xdddddd),
+  );
+  hose.position.set(0.12, 0.78, 0.18);
+  hose.rotation.z = 0.6;
+  hose.rotation.x = 0.4;
+  scubaGear.add(hose);
+
+  // Flippers on feet
+  for (const sx of [-1, 1] as const) {
+    const flip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.06, 0.42),
+      toon(0xff9040),
     );
-    tank.position.set(0, 0.4, -0.32);
-    tank.rotation.x = 0.15;
-    hips.add(tank);
-    const valve = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), toon(0xffe066));
-    valve.position.set(0, 0.7, -0.32);
-    hips.add(valve);
-    const mask = new THREE.Mesh(
-      new THREE.TorusGeometry(0.16, 0.04, 6, 12),
-      toon(0x3db8ff),
-    );
-    mask.position.set(0, 0.85, 0.22);
-    mask.rotation.x = Math.PI / 2;
-    hips.add(mask);
+    flip.position.set(sx * 0.13, -0.52, 0.12);
+    flip.castShadow = true;
+    scubaGear.add(flip);
   }
 
-  g.userData = { hips, legL, legR, armL, armR, head, torso, shadow };
+  // Fins of air bubbles hint (static tiny spheres, real bubbles from Player)
+  const bubbleHint = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 8, 6),
+    new THREE.MeshToonMaterial({
+      color: 0xaaf0ff,
+      transparent: true,
+      opacity: 0.55,
+    }),
+  );
+  bubbleHint.position.set(0.05, 1.05, 0.2);
+  scubaGear.add(bubbleHint);
+
+  hips.add(scubaGear);
+
+  // Land shoes (hidden when flippers show)
+  const shoes: THREE.Mesh[] = [];
+  for (const sx of [-1, 1] as const) {
+    const shoe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.08, 0.24),
+      toon(character === "girl" ? 0xff6688 : 0x334455),
+    );
+    shoe.position.set(sx * 0.13, -0.48, 0.04);
+    hips.add(shoe);
+    shoes.push(shoe);
+  }
+
+  g.userData = {
+    hips,
+    legL,
+    legR,
+    armL,
+    armR,
+    head,
+    torso: torsoLand,
+    shadow,
+    scubaGear,
+    // Outfit swap sets
+    landMeshes: [torsoLand, legLLand, legRLand, armLMesh, armRMesh, ...shoes],
+    suitMeshes: [torsoSuit, legLSuit, legRSuit, armLSuit, armRSuit],
+    /** true once player has unlocked scuba (level gear), not necessarily wearing it */
+    hasScuba: scuba,
+    imagineMode: false,
+  };
+
+  // If constructed with scuba flag (undersea level start), gear ready but visibility
+  // is driven by Player each frame based on water tiles.
   return g;
 }
 

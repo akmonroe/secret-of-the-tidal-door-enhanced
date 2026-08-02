@@ -200,7 +200,8 @@ export class Player {
     const dodging = this.time < this.dodgeUntil;
     const stunned = this.time < this.stunnedUntil;
 
-    this.inWater = isWaterAt(this.position.x, this.position.z, maze) || this.scuba;
+    // Water = actual water tiles only (do NOT force swim just because scuba is unlocked)
+    this.inWater = isWaterAt(this.position.x, this.position.z, maze);
 
     // Splash pulse when entering water
     if (this.inWater && !this.wasInWater) {
@@ -209,9 +210,12 @@ export class Player {
     }
     this.wasInWater = this.inWater;
 
+    // Walk on dry land; swim in water. Scuba gear only while swimming underwater with tank.
+    this.applyLocomotionVisuals();
+
     if (!dodging && !stunned) {
       const mv = input.moveVector();
-      const speed = this.inWater || this.scuba ? this.swimSpeed : this.walkSpeed;
+      const speed = this.inWater ? this.swimSpeed : this.walkSpeed;
       if (mv.x !== 0 || mv.z !== 0) {
         const len = Math.hypot(mv.x, mv.z) || 1;
         const nx = mv.x / len;
@@ -248,8 +252,31 @@ export class Player {
     input.setDodgeReady(this.canDodge());
   }
 
+  /**
+   * Land outfit vs wetsuit + scuba tank/mask/flippers.
+   * - Dry tiles → walk clothes, no gear
+   * - Water without scuba (beach) → freestyle swim clothes
+   * - Water with scuba unlocked → wetsuit + tank + flippers
+   */
+  private applyLocomotionVisuals(): void {
+    const ud = this.group.userData as {
+      scubaGear?: THREE.Group;
+      landMeshes?: THREE.Object3D[];
+      suitMeshes?: THREE.Object3D[];
+      hasScuba?: boolean;
+    };
+    const underwaterScuba = this.scuba && this.inWater;
+    if (ud.scubaGear) ud.scubaGear.visible = underwaterScuba;
+
+    // Wetsuit when scuba-swimming; land clothes otherwise (including freestyle beach swim)
+    if (ud.landMeshes && ud.suitMeshes) {
+      for (const m of ud.landMeshes) m.visible = !underwaterScuba;
+      for (const m of ud.suitMeshes) m.visible = underwaterScuba;
+    }
+  }
+
   private animate(dt: number): void {
-    // Imagine soft-realism sprite mode — billboard bob, no limb rig
+    // Legacy billboard mode (should not apply — player is always 3D now)
     if (this.group.userData.imagineMode) {
       this.animateImagineSprite(dt);
       return;
