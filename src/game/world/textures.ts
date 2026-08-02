@@ -1,9 +1,12 @@
 import * as THREE from "three";
+import { tryImagineTile } from "./imagineTextures";
 
 /**
- * Crossy Castle / Crossy Road inspired textures:
- * bright, chunky, readable, soft noise — not photoreal.
- * Distinct per-biome surfaces; toy / diorama scale detail.
+ * Surface textures for the 3D maze world.
+ *
+ * Enhanced fork: when USE_IMAGINE_ASSETS is on (default) and a matching PNG
+ * exists under src/assets/imagine/tiles/, that soft-realism map is used.
+ * Otherwise falls back to procedural canvas textures (toy / diorama look).
  *
  * Bases are intentionally high-key so MeshToonMaterial color multiplies
  * stay candy-bright instead of muddy.
@@ -65,8 +68,10 @@ function softBlob(
 
 // ─── Beach ───────────────────────────────────────────────────────────
 
-/** Warm sand: soft dunes, shell flecks, chunky grains — sunny toy beach. */
+/** Warm sand: Imagine soft-realism tile, or procedural toy beach. */
 export function sandTexture(): THREE.Texture {
+  const img = tryImagineTile("sand");
+  if (img) return img;
   return canvasTexture("sand", 128, (ctx, s) => {
     // High-key base so biome ground tint stays bright after multiply
     const base = ctx.createLinearGradient(0, 0, s, s);
@@ -118,8 +123,10 @@ export function sandTexture(): THREE.Texture {
   });
 }
 
-/** Beach rock walls: chunky cobble blocks, soft mortar — not photoreal stone. */
+/** Beach rock walls: Imagine cobble / rock_wall, or procedural toy stone. */
 export function rockTexture(): THREE.Texture {
+  const img = tryImagineTile("rock_wall");
+  if (img) return img;
   return canvasTexture("rock", 128, (ctx, s) => {
     // Warm pastel mortar so walls stay toy-bright when tinted
     ctx.fillStyle = "#d8d2c8";
@@ -156,8 +163,10 @@ export function rockTexture(): THREE.Texture {
 
 // ─── Water ───────────────────────────────────────────────────────────
 
-/** Toy water: bold wave ribbons + foam dots; UV-scroll friendly. */
+/** Water surface: Imagine turquoise water, or procedural wave ribbons. */
 export function waterTexture(): THREE.Texture {
+  const img = tryImagineTile("water_surface");
+  if (img) return img;
   return canvasTexture("water", 128, (ctx, s) => {
     // Bright cyan — multiplies cleanly with biome water color
     const g = ctx.createLinearGradient(0, 0, s * 0.3, s);
@@ -220,8 +229,10 @@ export function waterTexture(): THREE.Texture {
 
 // ─── House ───────────────────────────────────────────────────────────
 
-/** Indoor floorboards: warm planks, grain ticks, nail dots. */
+/** Indoor floorboards: Imagine wood_plank, or procedural planks. */
 export function woodTexture(): THREE.Texture {
+  const img = tryImagineTile("wood_plank");
+  if (img) return img;
   return canvasTexture("wood", 128, (ctx, s) => {
     ctx.fillStyle = "#f2e0c4";
     ctx.fillRect(0, 0, s, s);
@@ -330,8 +341,10 @@ export function wallStuccoTexture(): THREE.Texture {
 
 // ─── Reef ────────────────────────────────────────────────────────────
 
-/** Seafloor sand + grass tufts + pebbles — bright Crossy underwater. */
+/** Seafloor: Imagine seagrass sand, or procedural mint seafloor. */
 export function grassSeafloorTexture(): THREE.Texture {
+  const img = tryImagineTile("seafloor");
+  if (img) return img;
   return canvasTexture("seafloor", 128, (ctx, s) => {
     // Mint high-key base — biome green multiplies to candy seagrass
     const g = ctx.createRadialGradient(s * 0.4, s * 0.4, 10, s * 0.5, s * 0.5, s * 0.8);
@@ -391,8 +404,10 @@ export function grassSeafloorTexture(): THREE.Texture {
   });
 }
 
-/** Coral reef walls: porous sponge-y blobs, saturated toy coral. */
+/** Coral reef walls: Imagine coral_wall, or procedural sponge coral. */
 export function coralWallTexture(): THREE.Texture {
+  const img = tryImagineTile("coral_wall");
+  if (img) return img;
   return canvasTexture("coralWall", 128, (ctx, s) => {
     ctx.fillStyle = "#ff8a9a";
     ctx.fillRect(0, 0, s, s);
@@ -436,8 +451,73 @@ export function coralWallTexture(): THREE.Texture {
 
 // ─── Wreck ───────────────────────────────────────────────────────────
 
+/** Pale ice shelf surface — Imagine ice tile or soft procedural blue-white. */
+export function iceTexture(): THREE.Texture {
+  const img = tryImagineTile("ice");
+  if (img) return img;
+  return canvasTexture("ice", 128, (ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, s, s);
+    g.addColorStop(0, "#f4fcff");
+    g.addColorStop(0.5, "#d8f0fc");
+    g.addColorStop(1, "#c0e8f8");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 18; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        8 + Math.random() * 18,
+        4 + Math.random() * 10,
+        `rgba(255,255,255,${0.15 + Math.random() * 0.25})`,
+      );
+    }
+    ctx.strokeStyle = "rgba(140, 190, 220, 0.22)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 10; i++) {
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * s, Math.random() * s);
+      ctx.lineTo(Math.random() * s, Math.random() * s);
+      ctx.stroke();
+    }
+    noise(ctx, s, 0.04);
+  });
+}
+
+/** Dark basalt / vent rock — Imagine basalt_vent or procedural charcoal+ember. */
+export function basaltTexture(): THREE.Texture {
+  const img = tryImagineTile("basalt_vent");
+  if (img) return img;
+  return canvasTexture("basalt", 128, (ctx, s) => {
+    ctx.fillStyle = "#4a4248";
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 40; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        6 + Math.random() * 16,
+        5 + Math.random() * 12,
+        `rgba(30, 28, 34, ${0.2 + Math.random() * 0.3})`,
+      );
+    }
+    for (let i = 0; i < 16; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        3 + Math.random() * 6,
+        2 + Math.random() * 4,
+        `rgba(255, 120, 60, ${0.12 + Math.random() * 0.2})`,
+      );
+    }
+    noise(ctx, s, 0.05);
+  });
+}
+
 /** Ship hull planks: warm wood bands + brass rivets + barnacle flecks. */
 export function hullTexture(): THREE.Texture {
+  // Prefer basalt only when callers use basaltTexture(); hull stays wood-like.
   return canvasTexture("hull", 128, (ctx, s) => {
     // Warm chocolate (not near-black) so wreck ground stays readable
     ctx.fillStyle = "#c4895a";

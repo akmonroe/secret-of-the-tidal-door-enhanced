@@ -4,6 +4,7 @@ import { GameUI } from "../ui-dom/ui";
 import { LevelRuntime } from "../levels/LevelRuntime";
 import { getLevel, getNextLevel, totalLevelsBuilt } from "../levels/levelDefs";
 import { resetProgress, setScuba, type CharacterId } from "../progress/state";
+import { preloadImagineAssets } from "../world/imagineTextures";
 
 type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 
@@ -55,6 +56,8 @@ export class GameApp {
 
     window.addEventListener("resize", this.onResize);
     this.input.setGameplayVisible(false);
+    // Warm Imagine tile/sprite cache so first level doesn't flash blank maps
+    void preloadImagineAssets();
     this.showMenu();
     requestAnimationFrame(this.frame);
   }

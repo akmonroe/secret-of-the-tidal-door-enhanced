@@ -130,15 +130,15 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     wallStyle = "brick";
     floorStyle = "grate";
   } else if (biome.id === "vent") {
-    // Volcanic vents — dark hull plates, rock pillars (not brick bulkheads)
-    groundStyle = "hull";
-    wallStyle = "rock";
-    floorStyle = "hull";
+    // Volcanic vents — basalt floor + pillars (Imagine basalt_vent when on)
+    groundStyle = "basalt";
+    wallStyle = "basalt";
+    floorStyle = "basalt";
   } else if (biome.id === "ice") {
-    // Bright ice shelves — smooth rock walls tinted white via palette
-    groundStyle = "sand";
-    wallStyle = "rock";
-    floorStyle = "sand";
+    // Bright ice shelves — Imagine ice tile + ice walls
+    groundStyle = "ice";
+    wallStyle = "ice";
+    floorStyle = "ice";
   } else if (biome.id === "mirror") {
     // Looking-glass — cool metal sheen underfoot
     groundStyle = "grate";

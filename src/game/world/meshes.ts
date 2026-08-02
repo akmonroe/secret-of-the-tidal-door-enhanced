@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import type { CharacterId } from "../progress/state";
 import {
+  basaltTexture,
   brickTexture,
   coralWallTexture,
   crateTexture,
   grassSeafloorTexture,
   hullTexture,
+  iceTexture,
   metalGrateTexture,
   rockTexture,
   sandTexture,
@@ -36,16 +38,28 @@ function lighten(hex: number, factor: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
-/** Clone a shared canvas texture before setting unique repeat/offset. */
+/** Clone a shared texture before setting unique repeat/offset. */
 function mapForMesh(src: THREE.Texture, rx: number, ry: number): THREE.Texture {
   const map = src.clone();
-  map.needsUpdate = true;
+  // Imagine maps may still be decoding; re-link image so clone paints when ready
+  if (src.image) {
+    map.image = src.image;
+  }
+  map.colorSpace = src.colorSpace;
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.set(rx, ry);
+  map.needsUpdate = true;
   return map;
 }
 
-export type GroundStyle = "sand" | "wood" | "seafloor" | "hull" | "grate";
+export type GroundStyle =
+  | "sand"
+  | "wood"
+  | "seafloor"
+  | "hull"
+  | "grate"
+  | "ice"
+  | "basalt";
 
 export function makeGround(
   size: number,
@@ -59,6 +73,8 @@ export function makeGround(
   else if (style === "seafloor") src = grassSeafloorTexture();
   else if (style === "hull") src = hullTexture();
   else if (style === "grate") src = metalGrateTexture();
+  else if (style === "ice") src = iceTexture();
+  else if (style === "basalt") src = basaltTexture();
   const map = src ? mapForMesh(src, size / 6, size / 6) : null;
   const mesh = new THREE.Mesh(geo, toonMap(color, map));
   mesh.rotation.x = -Math.PI / 2;
@@ -80,7 +96,7 @@ export function makeWater(size: number, color: number): THREE.Mesh {
   return mesh;
 }
 
-export type WallStyle = "rock" | "stucco" | "coral" | "hull" | "brick";
+export type WallStyle = "rock" | "stucco" | "coral" | "hull" | "brick" | "basalt" | "ice";
 
 export function makeWallBox(
   w: number,
@@ -94,6 +110,8 @@ export function makeWallBox(
   else if (style === "hull") src = hullTexture();
   else if (style === "coral") src = coralWallTexture();
   else if (style === "brick") src = brickTexture();
+  else if (style === "basalt") src = basaltTexture();
+  else if (style === "ice") src = iceTexture();
   else src = rockTexture();
   const map = src ? mapForMesh(src, Math.max(1, w), Math.max(1, h)) : null;
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toonMap(color, map));
@@ -114,6 +132,8 @@ export function makeFloorTile(
   else if (style === "wood") src = woodTexture();
   else if (style === "seafloor") src = grassSeafloorTexture();
   else if (style === "grate") src = metalGrateTexture();
+  else if (style === "ice") src = iceTexture();
+  else if (style === "basalt") src = basaltTexture();
   else src = hullTexture();
   const map = src ? mapForMesh(src, 0.9, 0.9) : null;
   const mesh = new THREE.Mesh(
