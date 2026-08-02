@@ -1,13 +1,14 @@
 # 3D models (Blender → GLB)
 
-Built with Blender scripts, then **mobile-optimized** via `tools/blender/optimize_all_glbs.py`:
-Smart UV Project + Imagine 512² albedo + decimate to face budgets (~0.4–2.5k tris per asset).
+**Soft-realism** (pre-Simpsons) low-poly assets via Blender MCP /  
+`tools/blender/build_softreal_lowpoly.py`:
+kid proportions + Imagine 512² albedo + Smart UV + light decimate.
 
 | Path | Source texture | Notes |
 |------|----------------|-------|
-| `characters/adventurer_girl.glb` | `imagine/characters/adventurer_girl.png` (style ref; solid cel mats in mesh) | Simpsons-vein hierarchical kid; coral dress + bow; limb pivots; scuba kit; height 1.5→fit 1.8 |
-| `characters/adventurer_boy.glb` | `imagine/characters/adventurer_boy.png` (style ref; solid cel mats) | Simpsons-vein hierarchical kid; teal shirt + blue shorts; walk/swim/scuba anim via limbs |
-| `characters/simpsons_kid.glb` | solid materials | Earlier joined remesh prototype (not loaded by game) |
+| `characters/adventurer_girl.glb` | `imagine/characters/adventurer_girl.png` | Soft-real hierarchical kid (~700 faces); braid; limb pivots; scuba; fit height 1.8 |
+| `characters/adventurer_boy.glb` | `imagine/characters/adventurer_boy.png` | Soft-real hierarchical kid (~700 faces); walk/swim/scuba via limbs |
+| `characters/simpsons_kid.glb` | — | Legacy prototype; **not loaded** |
 | `creatures/shark.glb` | `imagine/creatures/shark.png` | Body + snout + dorsal/pectoral/tail fins |
 | `creatures/jelly.glb` | `imagine/creatures/jelly.png` | Domed bell + 6 tentacles |
 | `creatures/*.glb` | `imagine/creatures/*.png` | Other elongated / bird primitives |
@@ -35,6 +36,6 @@ Rebuild one-liners: see `docs/BLENDER_MCP.md`.
 ```bash
 export PATH="$HOME/apps/blender-4.2.9-linux-x64:$HOME/.local/bin:$PATH"
 cd ~/ai-coding/secret-of-the-tidal-door-enhanced
-# Hierarchical Simpsons-vein adventurers (boy + girl) with limb pivots + scuba
-blender -b -P tools/blender/build_simpsons_adventurers.py -- --who both
+# Soft-real low-poly humans + creatures + props (Blender MCP or headless)
+blender -b -P tools/blender/build_softreal_lowpoly.py -- --who all
 ```
