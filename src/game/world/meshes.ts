@@ -446,34 +446,37 @@ function makeScubaGearGroup(): THREE.Group {
   return scubaGear;
 }
 
-/** Collect Blender-exported scuba accessory nodes by fixed names (if present). */
-function collectGlbScubaGear(root: THREE.Object3D): THREE.Group | null {
-  const names = ["scuba_tank", "scuba_mask", "flipper_L", "flipper_R"] as const;
+const GLB_SCUBA_NAMES = new Set([
+  "scuba_tank",
+  "scuba_mask",
+  "flipper_L",
+  "flipper_R",
+]);
+
+/**
+ * Pull Blender-exported scuba accessory nodes into a toggle group.
+ * Uses Object3D.attach so world transforms (after GLB normalize/scale) stay correct.
+ * Returns null if the GLB has no named scuba parts.
+ */
+function collectGlbScubaGear(
+  root: THREE.Object3D,
+  parent: THREE.Object3D,
+): THREE.Group | null {
   const found: THREE.Object3D[] = [];
   root.traverse((o) => {
-    if ((names as readonly string[]).includes(o.name)) found.push(o);
+    if (GLB_SCUBA_NAMES.has(o.name)) found.push(o);
   });
   if (found.length === 0) return null;
 
   const scubaGear = new THREE.Group();
   scubaGear.name = "scubaGear";
   scubaGear.visible = false;
+  parent.add(scubaGear);
+  // attach() reparents while preserving world matrix — needed after model3d normalize
+  root.updateMatrixWorld(true);
   for (const o of found) {
-    // Preserve world transform while reparenting under the toggle group
-    o.updateWorldMatrix(true, false);
-    const wpos = new THREE.Vector3();
-    const wquat = new THREE.Quaternion();
-    const wscale = new THREE.Vector3();
-    o.matrixWorld.decompose(wpos, wquat, wscale);
-    o.parent?.remove(o);
-    scubaGear.add(o);
-    // Local pose is already correct relative to character root (siblings of body);
-    // after reparent under hips→body path we keep their authored local transforms
-    // by resetting to the original local values stored before reparent.
+    scubaGear.attach(o);
   }
-  // Re-fetch original local transforms: nodes were authored as siblings of body
-  // under the character root; reparenting into scubaGear under hips keeps the
-  // same local TRS since scubaGear sits at origin on hips (same as body).
   return scubaGear;
 }
 
@@ -504,10 +507,8 @@ function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group 
   hips.add(body);
 
   // Prefer Blender-authored scuba parts; else procedural kit aligned to ~1.8 figure
-  let scubaGear = collectGlbScubaGear(body);
-  if (scubaGear) {
-    hips.add(scubaGear);
-  } else {
+  let scubaGear = collectGlbScubaGear(body, hips);
+  if (!scubaGear) {
     scubaGear = makeScubaGearGroup();
     scubaGear.position.y = 0.55;
     hips.add(scubaGear);
