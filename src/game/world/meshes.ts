@@ -20,6 +20,7 @@ import {
   makeImagineBillboard,
   type ImagineSpriteKey,
 } from "./imagineTextures";
+import { cloneModel3d, type Model3dKey } from "./model3d";
 
 const toon = (color: number, opts?: { transparent?: boolean; opacity?: number }) =>
   new THREE.MeshToonMaterial({
@@ -369,12 +370,187 @@ export function makeCluePedestal(): THREE.Group {
   return g;
 }
 
+/** Procedural scuba tank/mask/flippers — attached to hips/visual root. */
+function makeScubaGearGroup(): THREE.Group {
+  const scubaGear = new THREE.Group();
+  scubaGear.name = "scubaGear";
+  scubaGear.visible = false;
+
+  const tank = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.15, 0.58, 10),
+    toon(0x4a90c8),
+  );
+  tank.position.set(0, 0.42, -0.34);
+  tank.rotation.x = 0.12;
+  tank.castShadow = true;
+  scubaGear.add(tank);
+  const tankBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.16, 0.03, 6, 12),
+    toon(0xffe066),
+  );
+  tankBand.position.set(0, 0.55, -0.34);
+  tankBand.rotation.x = Math.PI / 2;
+  scubaGear.add(tankBand);
+  const valve = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), toon(0xffe066));
+  valve.position.set(0, 0.74, -0.34);
+  scubaGear.add(valve);
+
+  const mask = new THREE.Mesh(
+    new THREE.TorusGeometry(0.17, 0.045, 6, 14),
+    toon(0x3db8ff),
+  );
+  mask.position.set(0, 0.9, 0.28);
+  mask.rotation.x = Math.PI / 2;
+  scubaGear.add(mask);
+  const lens = new THREE.Mesh(
+    new THREE.CircleGeometry(0.14, 12),
+    new THREE.MeshToonMaterial({
+      color: 0x88e0ff,
+      transparent: true,
+      opacity: 0.45,
+    }),
+  );
+  lens.position.set(0, 0.9, 0.3);
+  scubaGear.add(lens);
+
+  const hose = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6),
+    toon(0xdddddd),
+  );
+  hose.position.set(0.12, 0.78, 0.18);
+  hose.rotation.z = 0.6;
+  hose.rotation.x = 0.4;
+  scubaGear.add(hose);
+
+  for (const sx of [-1, 1] as const) {
+    const flip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.06, 0.42),
+      toon(0xff9040),
+    );
+    flip.position.set(sx * 0.13, -0.52, 0.12);
+    flip.castShadow = true;
+    scubaGear.add(flip);
+  }
+
+  const bubbleHint = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 8, 6),
+    new THREE.MeshToonMaterial({
+      color: 0xaaf0ff,
+      transparent: true,
+      opacity: 0.55,
+    }),
+  );
+  bubbleHint.position.set(0.05, 1.05, 0.2);
+  scubaGear.add(bubbleHint);
+
+  return scubaGear;
+}
+
+/** Collect Blender-exported scuba accessory nodes by fixed names (if present). */
+function collectGlbScubaGear(root: THREE.Object3D): THREE.Group | null {
+  const names = ["scuba_tank", "scuba_mask", "flipper_L", "flipper_R"] as const;
+  const found: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    if ((names as readonly string[]).includes(o.name)) found.push(o);
+  });
+  if (found.length === 0) return null;
+
+  const scubaGear = new THREE.Group();
+  scubaGear.name = "scubaGear";
+  scubaGear.visible = false;
+  for (const o of found) {
+    // Preserve world transform while reparenting under the toggle group
+    o.updateWorldMatrix(true, false);
+    const wpos = new THREE.Vector3();
+    const wquat = new THREE.Quaternion();
+    const wscale = new THREE.Vector3();
+    o.matrixWorld.decompose(wpos, wquat, wscale);
+    o.parent?.remove(o);
+    scubaGear.add(o);
+    // Local pose is already correct relative to character root (siblings of body);
+    // after reparent under hips→body path we keep their authored local transforms
+    // by resetting to the original local values stored before reparent.
+  }
+  // Re-fetch original local transforms: nodes were authored as siblings of body
+  // under the character root; reparenting into scubaGear under hips keeps the
+  // same local TRS since scubaGear sits at origin on hips (same as body).
+  return scubaGear;
+}
+
 /**
- * 3D kid adventurer (always mesh-based — Imagine cannot export 3D).
- * Imagine portraits are applied as a face card on the head for soft-realism.
- * Scuba gear lives in `userData.scubaGear` and is toggled when swimming underwater.
+ * Prefer Blender GLB humanoid (Imagine UV body). Single joined mesh → simple bob/lean
+ * in Player (glbMode). Scuba accessories from GLB (`scuba_tank`, `scuba_mask`,
+ * `flipper_L`, `flipper_R`) or procedural fallback. Falls back to limb kit if no GLB.
+ */
+function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group | null {
+  const key: Model3dKey =
+    character === "girl" ? "adventurer_girl" : "adventurer_boy";
+  const body = cloneModel3d(key);
+  if (!body) return null;
+
+  const g = new THREE.Group();
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.48, 16),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.02;
+  g.add(shadow);
+
+  // Pivot for bob / swim lean — body planted at local y=0 under hips
+  const hips = new THREE.Group();
+  hips.position.y = 0;
+  g.add(hips);
+  hips.add(body);
+
+  // Prefer Blender-authored scuba parts; else procedural kit aligned to ~1.8 figure
+  let scubaGear = collectGlbScubaGear(body);
+  if (scubaGear) {
+    hips.add(scubaGear);
+  } else {
+    scubaGear = makeScubaGearGroup();
+    scubaGear.position.y = 0.55;
+    hips.add(scubaGear);
+  }
+
+  // Dummy limb sockets so any legacy code reading userData doesn't throw
+  const dummy = () => new THREE.Group();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.01), toon(0x000000));
+  head.visible = false;
+  head.position.y = 1.55;
+  hips.add(head);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), toon(0x000000));
+  torso.visible = false;
+  hips.add(torso);
+
+  g.userData = {
+    hips,
+    legL: dummy(),
+    legR: dummy(),
+    armL: dummy(),
+    armR: dummy(),
+    head,
+    torso,
+    shadow,
+    scubaGear,
+    landMeshes: [] as THREE.Object3D[],
+    suitMeshes: [] as THREE.Object3D[],
+    hasScuba: scuba,
+    imagineMode: false,
+    glbMode: true,
+    glbBody: body,
+  };
+  return g;
+}
+
+/**
+ * 3D kid adventurer — prefers Blender GLB with Imagine textures; falls back to
+ * procedural limbs + optional face card. Scuba gear toggled when swimming underwater.
  */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
+  const fromGlb = makePlayerFromGlb(character, scuba);
+  if (fromGlb) return fromGlb;
+
   const g = new THREE.Group();
   // Land palette (walk) vs wetsuit (scuba swim) — materials swap visibility
   const skin = character === "girl" ? 0xf0c090 : 0xdf9a58;
@@ -512,81 +688,7 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
   hips.add(armL, armR);
 
   // --- Scuba gear (shown only when swimming with scuba unlocked) ---
-  const scubaGear = new THREE.Group();
-  scubaGear.name = "scubaGear";
-  scubaGear.visible = false;
-
-  const tank = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.15, 0.15, 0.58, 10),
-    toon(0x4a90c8),
-  );
-  tank.position.set(0, 0.42, -0.34);
-  tank.rotation.x = 0.12;
-  tank.castShadow = true;
-  scubaGear.add(tank);
-  const tankBand = new THREE.Mesh(
-    new THREE.TorusGeometry(0.16, 0.03, 6, 12),
-    toon(0xffe066),
-  );
-  tankBand.position.set(0, 0.55, -0.34);
-  tankBand.rotation.x = Math.PI / 2;
-  scubaGear.add(tankBand);
-  const valve = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), toon(0xffe066));
-  valve.position.set(0, 0.74, -0.34);
-  scubaGear.add(valve);
-
-  // Mask on face
-  const mask = new THREE.Mesh(
-    new THREE.TorusGeometry(0.17, 0.045, 6, 14),
-    toon(0x3db8ff),
-  );
-  mask.position.set(0, 0.9, 0.28);
-  mask.rotation.x = Math.PI / 2;
-  scubaGear.add(mask);
-  const lens = new THREE.Mesh(
-    new THREE.CircleGeometry(0.14, 12),
-    new THREE.MeshToonMaterial({
-      color: 0x88e0ff,
-      transparent: true,
-      opacity: 0.45,
-    }),
-  );
-  lens.position.set(0, 0.9, 0.3);
-  scubaGear.add(lens);
-
-  // Snorkel / regulator hose
-  const hose = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6),
-    toon(0xdddddd),
-  );
-  hose.position.set(0.12, 0.78, 0.18);
-  hose.rotation.z = 0.6;
-  hose.rotation.x = 0.4;
-  scubaGear.add(hose);
-
-  // Flippers on feet
-  for (const sx of [-1, 1] as const) {
-    const flip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.22, 0.06, 0.42),
-      toon(0xff9040),
-    );
-    flip.position.set(sx * 0.13, -0.52, 0.12);
-    flip.castShadow = true;
-    scubaGear.add(flip);
-  }
-
-  // Fins of air bubbles hint (static tiny spheres, real bubbles from Player)
-  const bubbleHint = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 8, 6),
-    new THREE.MeshToonMaterial({
-      color: 0xaaf0ff,
-      transparent: true,
-      opacity: 0.55,
-    }),
-  );
-  bubbleHint.position.set(0.05, 1.05, 0.2);
-  scubaGear.add(bubbleHint);
-
+  const scubaGear = makeScubaGearGroup();
   hips.add(scubaGear);
 
   // Land shoes (hidden when flippers show)
@@ -617,10 +719,23 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
     /** true once player has unlocked scuba (level gear), not necessarily wearing it */
     hasScuba: scuba,
     imagineMode: false,
+    glbMode: false,
   };
 
   // If constructed with scuba flag (undersea level start), gear ready but visibility
   // is driven by Player each frame based on water tiles.
+  return g;
+}
+
+/** Prefer Blender GLB creature; fall back to Imagine billboard / low-poly. */
+function makeCreatureFromGlb(key: Model3dKey, shadowR: number): THREE.Group | null {
+  const body = cloneModel3d(key);
+  if (!body) return null;
+  const g = new THREE.Group();
+  g.add(body);
+  addBlobShadow(g, shadowR);
+  g.userData.glbMode = true;
+  g.userData.model3dKey = key;
   return g;
 }
 
@@ -647,6 +762,8 @@ function makeCreatureFromImagine(
  * (`atan2(vx, vz)`) matches movement — same convention as the player.
  */
 export function makeShark(): THREE.Group {
+  const glb = makeCreatureFromGlb("shark", 0.65);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("shark", 1.7, 1.1, 0.65);
   if (img) return img;
   const g = new THREE.Group();
@@ -690,6 +807,8 @@ export function makeShark(): THREE.Group {
 }
 
 export function makeJelly(): THREE.Group {
+  const glb = makeCreatureFromGlb("jelly", 0.4);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("jelly", 1.2, 1.4, 0.4);
   if (img) return img;
   const g = new THREE.Group();
@@ -728,6 +847,8 @@ export function makeJelly(): THREE.Group {
 }
 
 export function makeRay(): THREE.Group {
+  const glb = makeCreatureFromGlb("ray", 0.7);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("ray", 1.8, 1.0, 0.7);
   if (img) return img;
   const g = new THREE.Group();
@@ -763,6 +884,8 @@ export function makeRay(): THREE.Group {
 }
 
 export function makePelican(): THREE.Group {
+  const glb = makeCreatureFromGlb("pelican", 0.55);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("pelican", 1.6, 1.5, 0.55);
   if (img) return img;
   const g = new THREE.Group();
@@ -821,6 +944,8 @@ export function makePelican(): THREE.Group {
 }
 
 export function makeGull(): THREE.Group {
+  const glb = makeCreatureFromGlb("gull", 0.4);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("gull", 1.3, 1.15, 0.4);
   if (img) return img;
   const g = new THREE.Group();
@@ -870,6 +995,8 @@ export function makeGull(): THREE.Group {
 
 /** Barrel-bodied sea lion for kelp lanes */
 export function makeSeaLion(): THREE.Group {
+  const glb = makeCreatureFromGlb("sealion", 0.55);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("sealion", 1.6, 1.2, 0.55);
   if (img) return img;
   // Chocolate toy seal — warmer than ray/shark slate so it pops on kelp green
@@ -914,6 +1041,8 @@ export function makeSeaLion(): THREE.Group {
 
 /** Deep anglerfish — lethal boss silhouette with glowing lure (toy, not horror) */
 export function makeAngler(): THREE.Group {
+  const glb = makeCreatureFromGlb("angler", 0.65);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("angler", 1.7, 1.6, 0.65);
   if (img) return img;
   const g = new THREE.Group();
@@ -983,6 +1112,8 @@ export function makeAngler(): THREE.Group {
 
 /** Fast silver marlin — lethal spear fish for current raceway / late seas */
 export function makeMarlin(): THREE.Group {
+  const glb = makeCreatureFromGlb("marlin", 0.7);
+  if (glb) return glb;
   const img = makeCreatureFromImagine("marlin", 2.0, 1.15, 0.7);
   if (img) return img;
   const g = new THREE.Group();

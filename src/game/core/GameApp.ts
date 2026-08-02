@@ -5,6 +5,7 @@ import { LevelRuntime } from "../levels/LevelRuntime";
 import { getLevel, getNextLevel, totalLevelsBuilt } from "../levels/levelDefs";
 import { resetProgress, setScuba, type CharacterId } from "../progress/state";
 import { preloadImagineAssets } from "../world/imagineTextures";
+import { preloadModels3d } from "../world/model3d";
 
 type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 
@@ -22,6 +23,8 @@ export class GameApp {
   private running = true;
   /** Prevent double fire of fall game-over */
   private fallReported = false;
+  /** Imagine tiles + Blender GLBs ready before first level spawns meshes */
+  private assetsReady: Promise<void>;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -56,8 +59,12 @@ export class GameApp {
 
     window.addEventListener("resize", this.onResize);
     this.input.setGameplayVisible(false);
-    // Warm Imagine tile/sprite cache so first level doesn't flash blank maps
-    void preloadImagineAssets();
+    // Warm Imagine tiles + Blender GLB templates before levels spawn entities
+    this.assetsReady = Promise.all([
+      preloadImagineAssets(),
+      preloadModels3d(),
+    ]).then(() => undefined);
+    void this.assetsReady;
     this.showMenu();
     requestAnimationFrame(this.frame);
   }
@@ -93,11 +100,18 @@ export class GameApp {
   }
 
   private startLevel(id: number): void {
+    void this.startLevelAsync(id);
+  }
+
+  private async startLevelAsync(id: number): Promise<void> {
     const def = getLevel(id);
     if (!def) {
       this.showMenu();
       return;
     }
+    // Ensure GLBs are in cache so makeShark / makePlayerCharacter prefer them
+    await this.assetsReady;
+
     this.pendingLevelId = id;
     this.fallReported = false;
     if (def.scuba) setScuba(true);

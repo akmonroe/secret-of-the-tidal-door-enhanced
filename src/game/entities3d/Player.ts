@@ -282,6 +282,12 @@ export class Player {
       return;
     }
 
+    // Blender GLB humanoid is a single joined body — bob / lean only
+    if (this.group.userData.glbMode) {
+      this.animateGlbBody(dt);
+      return;
+    }
+
     const parts = this.group.userData as LimbParts;
     const { hips, head, torso, shadow } = parts;
 
@@ -326,6 +332,77 @@ export class Player {
     shadow.scale.setScalar(THREE.MathUtils.lerp(1, 0.55, this.swimBlend));
     const shadowMat = shadow.material as THREE.MeshBasicMaterial;
     shadowMat.opacity = THREE.MathUtils.lerp(0.28, 0.12, this.swimBlend);
+
+    this.applyHitFlashVisuals(shadow);
+  }
+
+  /**
+   * Joined GLB body: face travel, walk bob / swim lean, no limb IK.
+   * Keeps walk/swim/scuba tile logic on the root (applyLocomotionVisuals).
+   */
+  private animateGlbBody(dt: number): void {
+    const hips = this.group.userData.hips as THREE.Group | undefined;
+    const shadow = this.group.userData.shadow as THREE.Mesh | undefined;
+    const spd = Math.hypot(this.velocity.x, this.velocity.z);
+    const moving = spd > 0.35;
+
+    const swimTarget = this.inWater ? 1 : 0;
+    this.swimBlend += (swimTarget - this.swimBlend) * Math.min(1, 6 * dt);
+
+    if (this.facing.lengthSq() > 0.01) {
+      const target = Math.atan2(this.facing.x, this.facing.z);
+      let yaw = this.group.rotation.y;
+      let diff = target - yaw;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      this.group.rotation.y = yaw + diff * Math.min(1, 10 * dt);
+    }
+
+    if (hips) {
+      if (this.inWater) {
+        this.animT += dt * (moving ? 9 : 3.2);
+        const s = Math.sin(this.animT);
+        hips.position.y = (moving ? 0.06 : 0.02) + Math.abs(s) * (moving ? 0.05 : 0.03);
+        const lean = this.swimBlend * (moving ? 0.45 : 0.22);
+        hips.rotation.x = lean;
+        if (moving) {
+          this.bubbleAcc += dt;
+          if (this.bubbleAcc > 0.12) {
+            this.bubbleAcc = 0;
+            this.spawnBubble();
+          }
+        } else {
+          this.bubbleAcc += dt;
+          if (this.bubbleAcc > 0.45) {
+            this.bubbleAcc = 0;
+            this.spawnBubble();
+          }
+        }
+      } else if (moving) {
+        this.animT +=
+          dt *
+          12 *
+          Math.min(
+            1.4,
+            0.5 + Math.hypot(this.velocity.x, this.velocity.z) / this.walkSpeed,
+          );
+        const s = Math.sin(this.animT);
+        hips.position.y = Math.abs(s) * 0.06;
+        hips.rotation.x *= 0.85;
+        // Subtle stride sway
+        hips.rotation.z = s * 0.04;
+      } else {
+        hips.position.y = Math.sin(this.time * 2.2) * 0.015;
+        hips.rotation.x *= 0.85;
+        hips.rotation.z *= 0.85;
+      }
+    }
+
+    if (shadow) {
+      shadow.scale.setScalar(THREE.MathUtils.lerp(1, 0.55, this.swimBlend));
+      const shadowMat = shadow.material as THREE.MeshBasicMaterial;
+      shadowMat.opacity = THREE.MathUtils.lerp(0.28, 0.12, this.swimBlend);
+    }
 
     this.applyHitFlashVisuals(shadow);
   }
@@ -378,11 +455,12 @@ export class Player {
       if (!(o as THREE.Mesh).isMesh || o === shadow) return;
       const mesh = o as THREE.Mesh;
       mesh.visible = matVisible;
-      const m = mesh.material as THREE.MeshToonMaterial | THREE.MeshBasicMaterial;
+      const m = mesh.material as THREE.Material;
       if (!m) return;
       // Toon materials: emissive pulse
-      if ((m as THREE.MeshToonMaterial).isMeshToonMaterial && (m as THREE.MeshToonMaterial).emissive) {
+      if ((m as THREE.MeshToonMaterial).isMeshToonMaterial) {
         const tm = m as THREE.MeshToonMaterial;
+        if (!tm.emissive) return;
         if (tm.userData.baseHitEmissive === undefined) {
           tm.userData.baseHitEmissive = tm.emissive.getHex();
           tm.userData.baseHitEmissiveIntensity = tm.emissiveIntensity ?? 0;
@@ -398,6 +476,23 @@ export class Player {
         // Billboard: tint red on hit without killing alpha cutout
         const bm = m as THREE.MeshBasicMaterial;
         bm.color.setHex(flashing ? 0xff6644 : 0xffffff);
+      } else if ((m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+        // GLB PBR materials from Blender
+        const sm = m as THREE.MeshStandardMaterial;
+        if (sm.userData.baseHitEmissive === undefined) {
+          sm.userData.baseHitEmissive = sm.emissive.getHex();
+          sm.userData.baseHitEmissiveIntensity = sm.emissiveIntensity ?? 0;
+          sm.userData.baseHitColor = sm.color.getHex();
+        }
+        if (flashing) {
+          sm.emissive.setHex(0xff2200);
+          sm.emissiveIntensity = 0.75 + Math.sin(this.time * 40) * 0.2;
+          sm.color.setHex(0xff8866);
+        } else {
+          sm.emissive.setHex(sm.userData.baseHitEmissive as number);
+          sm.emissiveIntensity = sm.userData.baseHitEmissiveIntensity as number;
+          sm.color.setHex(sm.userData.baseHitColor as number);
+        }
       }
     });
   }
