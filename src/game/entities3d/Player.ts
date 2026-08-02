@@ -10,13 +10,17 @@ import {
 
 type LimbParts = {
   hips: THREE.Group;
-  legL: THREE.Group;
-  legR: THREE.Group;
-  armL: THREE.Group;
-  armR: THREE.Group;
-  head: THREE.Mesh;
-  torso: THREE.Mesh;
+  legL: THREE.Object3D;
+  legR: THREE.Object3D;
+  armL: THREE.Object3D;
+  armR: THREE.Object3D;
+  head: THREE.Object3D;
+  torso: THREE.Object3D;
   shadow: THREE.Mesh;
+  scubaGear?: THREE.Group;
+  /** Rest hips.position.y — procedural kit 0.55, hierarchical GLB 0 */
+  hipsBaseY?: number;
+  glbLimbMode?: boolean;
 };
 
 export class Player {
@@ -282,8 +286,8 @@ export class Player {
       return;
     }
 
-    // Blender GLB humanoid is a single joined body — bob / lean only
-    if (this.group.userData.glbMode) {
+    // Joined GLB body only — hierarchical limb GLBs use walk/swim below
+    if (this.group.userData.glbMode && !this.group.userData.glbLimbMode) {
       this.animateGlbBody(dt);
       return;
     }
@@ -497,9 +501,15 @@ export class Player {
     });
   }
 
+  /** Rest hips Y: procedural limb kit 0.55, hierarchical / joined GLB 0. */
+  private hipsBaseY(parts: LimbParts): number {
+    return parts.hipsBaseY ?? 0.55;
+  }
+
   /** Land walk / idle */
   private animateWalk(dt: number, moving: boolean, parts: LimbParts): void {
     const { legL, legR, armL, armR, hips } = parts;
+    const baseY = this.hipsBaseY(parts);
 
     // Reset swim-only arm spreads
     armL.rotation.z *= 0.85;
@@ -514,24 +524,27 @@ export class Player {
       legR.rotation.x = -s * 0.75;
       armL.rotation.x = -s * 0.55;
       armR.rotation.x = s * 0.55;
-      hips.position.y = 0.55 + Math.abs(s) * 0.05;
+      hips.position.y = baseY + Math.abs(s) * 0.05;
     } else {
       legL.rotation.x *= 0.78;
       legR.rotation.x *= 0.78;
       armL.rotation.x *= 0.78;
       armR.rotation.x *= 0.78;
-      hips.position.y = 0.55 + Math.sin(this.time * 2.2) * 0.02;
+      hips.position.y = baseY + Math.sin(this.time * 2.2) * 0.02;
     }
   }
 
   /**
    * Water swim:
-   * - Flutter kick on legs (opposite phase, larger)
+   * - Flutter kick on legs (opposite phase, larger; stronger with scuba flippers)
    * - Alternating crawl stroke on arms (forward reach + pull)
    * - Body bob + float idle when still
    */
   private animateSwim(dt: number, moving: boolean, parts: LimbParts): void {
     const { legL, legR, armL, armR, hips } = parts;
+    const baseY = this.hipsBaseY(parts);
+    // Flippers on → slightly stronger leg kick (scubaGear.visible while scuba && inWater)
+    const flipperKick = parts.scubaGear?.visible ? 1.35 : 1;
 
     if (moving) {
       // Crawl cycle
@@ -541,10 +554,10 @@ export class Player {
       const s2 = Math.sin(this.animT * 2); // double-time kick
 
       // Flutter kick (fast vertical-ish kick while body is leaned)
-      legL.rotation.x = 0.35 + s2 * 0.85;
-      legR.rotation.x = 0.35 - s2 * 0.85;
-      legL.rotation.z = s2 * 0.12;
-      legR.rotation.z = -s2 * 0.12;
+      legL.rotation.x = 0.35 + s2 * 0.85 * flipperKick;
+      legR.rotation.x = 0.35 - s2 * 0.85 * flipperKick;
+      legL.rotation.z = s2 * 0.12 * flipperKick;
+      legR.rotation.z = -s2 * 0.12 * flipperKick;
 
       // Freestyle-ish arm stroke: opposite arms
       // phase: reach forward (neg X) → out (Z) → pull back
@@ -555,8 +568,8 @@ export class Player {
       armL.rotation.y = s * 0.35;
       armR.rotation.y = -s * 0.35;
 
-      // Bob through the stroke
-      hips.position.y = 0.42 + Math.abs(s) * 0.06;
+      // Bob through the stroke (procedural was 0.42 ≈ base 0.55 − 0.13)
+      hips.position.y = baseY - 0.13 + Math.abs(s) * 0.06;
 
       // Bubbles while stroking
       this.bubbleAcc += dt;
@@ -570,8 +583,8 @@ export class Player {
       const s = Math.sin(this.animT);
       const s2 = Math.sin(this.animT * 2.1);
 
-      legL.rotation.x = 0.5 + s2 * 0.25;
-      legR.rotation.x = 0.5 - s2 * 0.25;
+      legL.rotation.x = 0.5 + s2 * 0.25 * flipperKick;
+      legR.rotation.x = 0.5 - s2 * 0.25 * flipperKick;
       legL.rotation.z = s * 0.08;
       legR.rotation.z = -s * 0.08;
 
@@ -582,7 +595,7 @@ export class Player {
       armL.rotation.y *= 0.9;
       armR.rotation.y *= 0.9;
 
-      hips.position.y = 0.4 + Math.sin(this.time * 1.8) * 0.05;
+      hips.position.y = baseY - 0.15 + Math.sin(this.time * 1.8) * 0.05;
 
       this.bubbleAcc += dt;
       if (this.bubbleAcc > 0.45) {

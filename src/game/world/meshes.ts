@@ -453,6 +453,48 @@ const GLB_SCUBA_NAMES = new Set([
   "flipper_R",
 ]);
 
+/** Normalize Blender / export node names for flexible limb matching. */
+function normalizePartName(name: string): string {
+  return name.toLowerCase().replace(/[_\-.\s]/g, "");
+}
+
+/** Canonical part keys → accepted normalized aliases (exact or endsWith). */
+const GLB_PART_ALIASES: Record<string, string[]> = {
+  hips: ["hips", "hip", "pelvis"],
+  head: ["head"],
+  torso: ["torso", "chest", "spine"],
+  armL: ["arml", "leftarm", "armleft", "larm"],
+  armR: ["armr", "rightarm", "armright", "rarm"],
+  legL: ["legl", "leftleg", "legleft", "lleg"],
+  legR: ["legr", "rightleg", "legright", "rleg"],
+};
+
+/**
+ * Find a hierarchical pivot/mesh by flexible name (arm_L, armL, Arm_L, …).
+ * Prefers exact alias match over prefix/suffix fuzzy match.
+ */
+function findGlbPart(
+  root: THREE.Object3D,
+  key: keyof typeof GLB_PART_ALIASES,
+): THREE.Object3D | null {
+  const aliases = GLB_PART_ALIASES[key];
+  let exact: THREE.Object3D | null = null;
+  let fuzzy: THREE.Object3D | null = null;
+  root.traverse((o) => {
+    if (o === root) return;
+    const n = normalizePartName(o.name);
+    if (!n) return;
+    if (aliases.includes(n)) {
+      if (!exact) exact = o;
+      return;
+    }
+    if (!fuzzy && aliases.some((a) => n === a || n.endsWith(a) || n.startsWith(a))) {
+      fuzzy = o;
+    }
+  });
+  return exact ?? fuzzy;
+}
+
 /**
  * Pull Blender-exported scuba accessory nodes into a toggle group.
  * Uses Object3D.attach so world transforms (after GLB normalize/scale) stay correct.
@@ -481,9 +523,10 @@ function collectGlbScubaGear(
 }
 
 /**
- * Prefer Blender GLB humanoid (Imagine UV body). Single joined mesh → simple bob/lean
- * in Player (glbMode). Scuba accessories from GLB (`scuba_tank`, `scuba_mask`,
- * `flipper_L`, `flipper_R`) or procedural fallback. Falls back to limb kit if no GLB.
+ * Prefer Blender GLB humanoid (Imagine UV / Simpsons-style hierarchy).
+ * - Hierarchical limb pivots (arm_L, leg_R, …) → procedural walk/swim (not glbMode)
+ * - Single joined mesh → bob/lean only via animateGlbBody (glbMode)
+ * Scuba accessories from GLB or procedural fallback.
  */
 function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group | null {
   const key: Model3dKey =
@@ -500,7 +543,14 @@ function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group 
   shadow.position.y = 0.02;
   g.add(shadow);
 
-  // Pivot for bob / swim lean — body planted at local y=0 under hips
+  // Detect Simpsons-style hierarchy before parenting (names are on the clone tree)
+  const armLFound = findGlbPart(body, "armL");
+  const armRFound = findGlbPart(body, "armR");
+  const legLFound = findGlbPart(body, "legL");
+  const legRFound = findGlbPart(body, "legR");
+  const hasLimbs = !!(armLFound && armRFound && legLFound && legRFound);
+
+  // Pivot for bob / swim lean — GLB feet at local y=0 (unlike procedural hips at 0.55)
   const hips = new THREE.Group();
   hips.position.y = 0;
   g.add(hips);
@@ -510,26 +560,50 @@ function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group 
   let scubaGear = collectGlbScubaGear(body, hips);
   if (!scubaGear) {
     scubaGear = makeScubaGearGroup();
+    // Procedural gear coords assume pelvis origin; GLB outer hips rest at feet y=0
     scubaGear.position.y = 0.55;
     hips.add(scubaGear);
   }
 
-  // Dummy limb sockets so any legacy code reading userData doesn't throw
   const dummy = () => new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.01), toon(0x000000));
-  head.visible = false;
-  head.position.y = 1.55;
-  hips.add(head);
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), toon(0x000000));
-  torso.visible = false;
-  hips.add(torso);
+  let head: THREE.Object3D;
+  let torso: THREE.Object3D;
+  let armL: THREE.Object3D;
+  let armR: THREE.Object3D;
+  let legL: THREE.Object3D;
+  let legR: THREE.Object3D;
+
+  if (hasLimbs) {
+    armL = armLFound!;
+    armR = armRFound!;
+    legL = legLFound!;
+    legR = legRFound!;
+    head = findGlbPart(body, "head") ?? dummy();
+    torso = findGlbPart(body, "torso") ?? dummy();
+    // Ensure dummies live under hips so scale/rotation is harmless
+    if (!head.parent) hips.add(head);
+    if (!torso.parent) hips.add(torso);
+  } else {
+    // Joined mesh: dummy sockets so legacy userData reads don't throw
+    head = new THREE.Mesh(new THREE.SphereGeometry(0.01), toon(0x000000));
+    head.visible = false;
+    head.position.y = 1.55;
+    hips.add(head);
+    torso = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), toon(0x000000));
+    torso.visible = false;
+    hips.add(torso);
+    armL = dummy();
+    armR = dummy();
+    legL = dummy();
+    legR = dummy();
+  }
 
   g.userData = {
     hips,
-    legL: dummy(),
-    legR: dummy(),
-    armL: dummy(),
-    armR: dummy(),
+    legL,
+    legR,
+    armL,
+    armR,
     head,
     torso,
     shadow,
@@ -538,7 +612,12 @@ function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group 
     suitMeshes: [] as THREE.Object3D[],
     hasScuba: scuba,
     imagineMode: false,
-    glbMode: true,
+    /** Joined mesh only — hierarchical limbs use walk/swim like procedural kit */
+    glbMode: !hasLimbs,
+    /** Hierarchical GLB limb pivots (Simpsons-style empty pivots + mesh children) */
+    glbLimbMode: hasLimbs,
+    /** Rest height for hips.position.y in animateWalk / animateSwim */
+    hipsBaseY: 0,
     glbBody: body,
   };
   return g;
@@ -721,6 +800,9 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
     hasScuba: scuba,
     imagineMode: false,
     glbMode: false,
+    glbLimbMode: false,
+    /** Procedural kit hips rest at 0.55 (GLB hierarchical uses 0) */
+    hipsBaseY: 0.55,
   };
 
   // If constructed with scuba flag (undersea level start), gear ready but visibility

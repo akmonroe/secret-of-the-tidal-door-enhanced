@@ -43,27 +43,23 @@ grok mcp doctor blender
 
 Always invoke as `blender -b -P script.py -- args` (background + Python).
 
-### Humans (girl / boy)
+### Humans (girl / boy) — Simpsons-vein hierarchical
 
-Kid proportions (~1:5 head), Imagine albedo + smart UV (`island_margin=0.06`), plus scuba accessories as separate named meshes parented under the character root: `scuba_tank`, `scuba_mask`, `flipper_L`, `flipper_R`.
+Kid proportions (~1:5 head), solid cel materials (Imagine PNGs are style/UI refs), limb pivots for walk/swim, scuba accessories: `scuba_tank`, `scuba_mask`, `flipper_L`, `flipper_R`.
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/apps/blender-4.2.9-linux-x64:$HOME/.local/bin:$PATH"
 cd ~/ai-coding/secret-of-the-tidal-door-enhanced
 
-# One character
-blender -b -P tools/blender/build_character_glb.py -- \
-  --name adventurer_girl --kind human \
-  --texture src/assets/imagine/characters/adventurer_girl.png \
-  --out src/assets/models3d/characters/adventurer_girl.glb
+# Preferred: hierarchical Simpsons-vein adventurers (walk/swim/scuba limb anim)
+blender -b -P tools/blender/build_simpsons_adventurers.py -- --who both
+# Or one: --who boy | --who girl
 
-# Both adventurers
-for n in adventurer_girl adventurer_boy; do
-  blender -b -P tools/blender/build_character_glb.py -- \
-    --name $n --kind human \
-    --texture src/assets/imagine/characters/$n.png \
-    --out src/assets/models3d/characters/$n.glb
-done
+# Legacy joined-mesh Imagine-albedo builder (bob/lean only):
+# blender -b -P tools/blender/build_character_glb.py -- \
+#   --name adventurer_girl --kind human \
+#   --texture src/assets/imagine/characters/adventurer_girl.png \
+#   --out src/assets/models3d/characters/adventurer_girl.glb
 ```
 
 ### Creatures (shark / jelly / others)
