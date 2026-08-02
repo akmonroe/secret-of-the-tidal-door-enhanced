@@ -59,20 +59,29 @@ export class GameUI {
 
   showCharacterSelect(): void {
     this.hideHud();
+    // Use Imagine portraits when the enhanced pack is present
+    const girlImg = new URL(
+      "../../assets/imagine/characters/adventurer_girl.png",
+      import.meta.url,
+    ).href;
+    const boyImg = new URL(
+      "../../assets/imagine/characters/adventurer_boy.png",
+      import.meta.url,
+    ).href;
     this.root.innerHTML = `
       <div class="panel">
         <h2>Who is exploring today?</h2>
         <p class="sub">Pick a girl or a boy adventurer</p>
         <div class="char-row">
           <button class="char-card" data-id="girl">
-            <div class="char-preview girl"></div>
+            <div class="char-preview girl" style="background-image:url('${girlImg}')"></div>
             <span>Girl</span>
-            <small>Coral dress · braid</small>
+            <small>Soft-realism adventurer</small>
           </button>
           <button class="char-card" data-id="boy">
-            <div class="char-preview boy"></div>
+            <div class="char-preview boy" style="background-image:url('${boyImg}')"></div>
             <span>Boy</span>
-            <small>Ocean tee · short hair</small>
+            <small>Soft-realism adventurer</small>
           </button>
         </div>
         <button class="btn primary" id="btn-char-go" disabled>Continue</button>

@@ -249,6 +249,12 @@ export class Player {
   }
 
   private animate(dt: number): void {
+    // Imagine soft-realism sprite mode — billboard bob, no limb rig
+    if (this.group.userData.imagineMode) {
+      this.animateImagineSprite(dt);
+      return;
+    }
+
     const parts = this.group.userData as LimbParts;
     const { hips, head, torso, shadow } = parts;
 
@@ -294,7 +300,50 @@ export class Player {
     const shadowMat = shadow.material as THREE.MeshBasicMaterial;
     shadowMat.opacity = THREE.MathUtils.lerp(0.28, 0.12, this.swimBlend);
 
-    // Invuln blink + hit red flash (vent burns / animal bumps)
+    this.applyHitFlashVisuals(shadow);
+  }
+
+  /** Soft-realism player: face travel dir, bounce while moving, invuln blink. */
+  private animateImagineSprite(dt: number): void {
+    const shadow = this.group.userData.shadow as THREE.Mesh | undefined;
+    const billboard = this.group.userData.billboard as THREE.Mesh | undefined;
+    const spd = Math.hypot(this.velocity.x, this.velocity.z);
+    const moving = spd > 0.35;
+
+    if (this.facing.lengthSq() > 0.01) {
+      const target = Math.atan2(this.facing.x, this.facing.z);
+      let yaw = this.group.rotation.y;
+      let diff = target - yaw;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      this.group.rotation.y = yaw + diff * Math.min(1, 10 * dt);
+    }
+
+    if (moving) {
+      this.animT += dt * 10;
+      const bob = Math.abs(Math.sin(this.animT)) * 0.08;
+      if (billboard) billboard.position.y = 0.95 + bob;
+    } else if (billboard) {
+      billboard.position.y = 0.95 + Math.sin(this.time * 2) * 0.03;
+    }
+
+    // Slight swim tilt
+    const swimTarget = this.inWater ? 1 : 0;
+    this.swimBlend += (swimTarget - this.swimBlend) * Math.min(1, 6 * dt);
+    if (billboard) {
+      billboard.rotation.x = -this.swimBlend * 0.25;
+    }
+
+    if (shadow) {
+      shadow.scale.setScalar(THREE.MathUtils.lerp(1, 0.55, this.swimBlend));
+      const shadowMat = shadow.material as THREE.MeshBasicMaterial;
+      shadowMat.opacity = THREE.MathUtils.lerp(0.3, 0.12, this.swimBlend);
+    }
+
+    this.applyHitFlashVisuals(shadow);
+  }
+
+  private applyHitFlashVisuals(shadow?: THREE.Mesh): void {
     const flashing = this.time < this.hitFlashUntil;
     const matVisible =
       this.time < this.invulnUntil ? Math.sin(this.time * 30) > 0 : true;
@@ -302,18 +351,26 @@ export class Player {
       if (!(o as THREE.Mesh).isMesh || o === shadow) return;
       const mesh = o as THREE.Mesh;
       mesh.visible = matVisible;
-      const m = mesh.material as THREE.MeshToonMaterial | undefined;
-      if (!m || !m.isMeshToonMaterial || !m.emissive) return;
-      if (m.userData.baseHitEmissive === undefined) {
-        m.userData.baseHitEmissive = m.emissive.getHex();
-        m.userData.baseHitEmissiveIntensity = m.emissiveIntensity ?? 0;
-      }
-      if (flashing) {
-        m.emissive.setHex(0xff2200);
-        m.emissiveIntensity = 0.85 + Math.sin(this.time * 40) * 0.2;
-      } else {
-        m.emissive.setHex(m.userData.baseHitEmissive as number);
-        m.emissiveIntensity = m.userData.baseHitEmissiveIntensity as number;
+      const m = mesh.material as THREE.MeshToonMaterial | THREE.MeshBasicMaterial;
+      if (!m) return;
+      // Toon materials: emissive pulse
+      if ((m as THREE.MeshToonMaterial).isMeshToonMaterial && (m as THREE.MeshToonMaterial).emissive) {
+        const tm = m as THREE.MeshToonMaterial;
+        if (tm.userData.baseHitEmissive === undefined) {
+          tm.userData.baseHitEmissive = tm.emissive.getHex();
+          tm.userData.baseHitEmissiveIntensity = tm.emissiveIntensity ?? 0;
+        }
+        if (flashing) {
+          tm.emissive.setHex(0xff2200);
+          tm.emissiveIntensity = 0.85 + Math.sin(this.time * 40) * 0.2;
+        } else {
+          tm.emissive.setHex(tm.userData.baseHitEmissive as number);
+          tm.emissiveIntensity = tm.userData.baseHitEmissiveIntensity as number;
+        }
+      } else if ((m as THREE.MeshBasicMaterial).isMeshBasicMaterial) {
+        // Billboard: tint red on hit without killing alpha cutout
+        const bm = m as THREE.MeshBasicMaterial;
+        bm.color.setHex(flashing ? 0xff6644 : 0xffffff);
       }
     });
   }
