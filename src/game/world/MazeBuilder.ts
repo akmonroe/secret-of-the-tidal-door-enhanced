@@ -290,7 +290,8 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
  * - Dark abyss under the island (no fake ground past the rim)
  * - Waterfall sheets pouring off every side (animated UV)
  * - Stepped earth/rock ledges crumbling into the void
- * - Mist + foam at the lip; yellow/black hazard curb; corner posts
+ * - Mist + foam at the lip; dark stone rim curb; corner posts
+ * (No yellow/gold hazard stripes — kids found them distracting.)
  */
 function buildWorldEdgeGuard(
   originX: number,
@@ -356,8 +357,8 @@ function buildWorldEdgeGuard(
   glowCore.position.set(midX, -12, midZ);
   g.add(glowCore);
 
-  const STRIPE_YEL = 0xffdd33;
-  const STRIPE_BLK = 0x1a1410;
+  const RIM_STONE = 0x3a342e;
+  const RIM_DARK = 0x1a1410;
   const WARN_RED = 0xff3344;
   const CLIFF = 0x4a4038;
   const CLIFF_DARK = 0x2a2420;
@@ -374,40 +375,28 @@ function buildWorldEdgeGuard(
     outX: number,
     outZ: number,
   ): void => {
-    // Hazard curb on the rim
+    // Subtle dark stone curb on the rim (no yellow hazard stripes)
     const curbW = alongX ? length + 0.8 : 0.9;
     const curbD = alongX ? 0.9 : length + 0.8;
     const curb = new THREE.Mesh(
       new THREE.BoxGeometry(curbW, 0.5, curbD),
-      new THREE.MeshToonMaterial({ color: STRIPE_BLK }),
+      new THREE.MeshToonMaterial({ color: RIM_DARK }),
     );
     curb.position.set(cx, 0.2, cz);
     curb.castShadow = true;
     g.add(curb);
 
-    const segs = Math.max(4, Math.floor(length / 1.35));
-    for (let i = 0; i < segs; i++) {
-      if (i % 2 !== 0) continue;
-      const t = (i + 0.5) / segs - 0.5;
-      const stripe = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          alongX ? length / segs + 0.02 : 0.75,
-          0.12,
-          alongX ? 0.75 : length / segs + 0.02,
-        ),
-        new THREE.MeshToonMaterial({
-          color: STRIPE_YEL,
-          emissive: STRIPE_YEL,
-          emissiveIntensity: 0.4,
-        }),
-      );
-      stripe.position.set(
-        alongX ? cx + t * length : cx,
-        0.5,
-        alongX ? cz : cz + t * length,
-      );
-      g.add(stripe);
-    }
+    // Soft rock cap on the curb — reads as natural cliff lip, not a caution tape
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        alongX ? length + 0.4 : 0.55,
+        0.14,
+        alongX ? 0.55 : length + 0.4,
+      ),
+      new THREE.MeshToonMaterial({ color: RIM_STONE }),
+    );
+    cap.position.set(cx, 0.48, cz);
+    g.add(cap);
 
     // Stepped earth ledges — “edge of the world” crumbling outward & down
     for (let step = 0; step < 4; step++) {
@@ -624,7 +613,7 @@ function buildWorldEdgeGuard(
     g.add(strip);
   }
 
-  // Corner posts
+  // Corner posts — dark stone with soft teal foam caps (no yellow rings)
   const corners: Array<[number, number]> = [
     [minX - lip, minZ - lip],
     [maxX + lip, minZ - lip],
@@ -634,7 +623,7 @@ function buildWorldEdgeGuard(
   for (const [px, pz] of corners) {
     const post = new THREE.Mesh(
       new THREE.CylinderGeometry(0.22, 0.28, 2.4, 8),
-      new THREE.MeshToonMaterial({ color: STRIPE_BLK }),
+      new THREE.MeshToonMaterial({ color: RIM_DARK }),
     );
     post.position.set(px, 1.15, pz);
     post.castShadow = true;
@@ -643,9 +632,7 @@ function buildWorldEdgeGuard(
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(0.3, 0.07, 6, 12),
         new THREE.MeshToonMaterial({
-          color: STRIPE_YEL,
-          emissive: STRIPE_YEL,
-          emissiveIntensity: 0.5,
+          color: k % 2 === 0 ? RIM_STONE : CLIFF,
         }),
       );
       ring.rotation.x = Math.PI / 2;
@@ -655,9 +642,9 @@ function buildWorldEdgeGuard(
     const cap = new THREE.Mesh(
       new THREE.SphereGeometry(0.32, 10, 8),
       new THREE.MeshToonMaterial({
-        color: WARN_RED,
-        emissive: 0xff0022,
-        emissiveIntensity: 0.7,
+        color: 0x88c8d8,
+        emissive: 0x336688,
+        emissiveIntensity: 0.25,
       }),
     );
     cap.position.set(px, 2.5, pz);

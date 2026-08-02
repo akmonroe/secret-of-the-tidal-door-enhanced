@@ -154,7 +154,7 @@ export class Player {
 
   /**
    * True when inside the map but within `dist` of the fall line
-   * (matches the red warning band / yellow curb kids should notice).
+   * (matches the red warning band / stone curb at the world rim).
    */
   isNearWorldEdge(maze: MazeBuild, dist = 2.2): boolean {
     if (this.isOutsideWorld(maze)) return false;

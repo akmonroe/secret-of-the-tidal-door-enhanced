@@ -58,6 +58,7 @@ export class GameApp {
     });
 
     window.addEventListener("resize", this.onResize);
+    this.installZoomGuards(container);
     this.input.setGameplayVisible(false);
     // Warm Imagine tiles + Blender GLB templates before levels spawn entities
     this.assetsReady = Promise.all([
@@ -67,6 +68,53 @@ export class GameApp {
     void this.assetsReady;
     this.showMenu();
     requestAnimationFrame(this.frame);
+  }
+
+  /**
+   * Block pinch-zoom, Safari gesture zoom, and double-tap zoom on iPad/iOS
+   * so kids don't accidentally scale the whole page while playing.
+   */
+  private installZoomGuards(container: HTMLElement): void {
+    const canvas = this.renderer.domElement;
+    canvas.style.touchAction = "none";
+    canvas.setAttribute("touch-action", "none");
+
+    // Safari non-standard multi-finger gesture events
+    const blockGesture = (e: Event) => {
+      e.preventDefault();
+    };
+    document.addEventListener("gesturestart", blockGesture, { passive: false });
+    document.addEventListener("gesturechange", blockGesture, { passive: false });
+    document.addEventListener("gestureend", blockGesture, { passive: false });
+
+    // Multi-touch pinch on the game surface
+    const blockMultiTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault();
+    };
+    document.addEventListener("touchmove", blockMultiTouchMove, {
+      passive: false,
+    });
+
+    // Double-tap zoom: swallow rapid second tap on canvas / container
+    let lastTap = 0;
+    const blockDoubleTap = (e: TouchEvent) => {
+      const now = performance.now();
+      if (now - lastTap < 320) {
+        e.preventDefault();
+      }
+      lastTap = now;
+    };
+    container.addEventListener("touchend", blockDoubleTap, { passive: false });
+    canvas.addEventListener("touchend", blockDoubleTap, { passive: false });
+
+    // Ctrl/⌘ + wheel zoom (desktop trackpads / accidental modifiers)
+    window.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey || e.metaKey) e.preventDefault();
+      },
+      { passive: false },
+    );
   }
 
   private onResize = () => {
@@ -203,6 +251,8 @@ export class GameApp {
       // Keep rendering during fall until fail UI takes over; fail mode freezes last view
       if (this.mode === "play") {
         this.level.update(dt, this.input, this.camera);
+        const bearing = this.level.getCompassBearingDeg();
+        this.ui.updateCompass(bearing, this.level.isClueCollected());
       }
       this.renderer.render(this.level.scene, this.camera);
       // Blackout overlay is DOM; darken canvas when failed

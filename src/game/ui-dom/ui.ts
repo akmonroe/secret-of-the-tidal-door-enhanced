@@ -13,6 +13,9 @@ export class GameUI {
   private handlers: UIHandlers;
   private hudEl!: HTMLDivElement;
   private hintEl!: HTMLDivElement;
+  private compassEl!: HTMLDivElement;
+  private compassNeedle!: HTMLDivElement;
+  private compassLabel!: HTMLDivElement;
 
   constructor(handlers: UIHandlers) {
     this.handlers = handlers;
@@ -38,6 +41,27 @@ export class GameUI {
     this.hintEl.id = "hud-hint";
     this.hintEl.style.display = "none";
     document.body.appendChild(this.hintEl);
+
+    // Treasure compass — upper-right, points at current level clue
+    this.compassEl = document.createElement("div");
+    this.compassEl.id = "hud-compass";
+    this.compassEl.style.display = "none";
+    this.compassEl.setAttribute("aria-label", "Treasure compass");
+    this.compassEl.innerHTML = `
+      <div class="compass-dial">
+        <div class="compass-ring"></div>
+        <div class="compass-mark n">N</div>
+        <div class="compass-needle" id="compass-needle">
+          <span class="compass-arrow-head"></span>
+          <span class="compass-arrow-tail"></span>
+        </div>
+        <div class="compass-hub"></div>
+      </div>
+      <div class="compass-label" id="compass-label">Clue</div>
+    `;
+    document.body.appendChild(this.compassEl);
+    this.compassNeedle = this.compassEl.querySelector("#compass-needle")!;
+    this.compassLabel = this.compassEl.querySelector("#compass-label")!;
   }
 
   showMenu(levelsBuilt = 1): void {
@@ -160,11 +184,15 @@ export class GameUI {
 
   showHud(): void {
     this.hudEl.style.display = "block";
+    this.compassEl.style.display = "flex";
+    this.compassEl.classList.remove("found");
+    this.compassLabel.textContent = "Clue";
   }
 
   hideHud(): void {
     this.hudEl.style.display = "none";
     this.hintEl.style.display = "none";
+    this.compassEl.style.display = "none";
   }
 
   updateHud(hp: number, maxHp: number, objective: string, clues: number): void {
@@ -175,6 +203,22 @@ export class GameUI {
     if (h) h.textContent = hearts;
     if (o) o.textContent = objective;
     if (c) c.textContent = `Clues ${clues} / 12`;
+  }
+
+  /**
+   * Rotate compass needle so "up" = world direction to the clue relative to
+   * player facing. Pass null / found=true after the treasure is collected.
+   */
+  updateCompass(bearingDeg: number | null, found = false): void {
+    if (found || bearingDeg === null) {
+      this.compassEl.classList.add("found");
+      this.compassLabel.textContent = "Found!";
+      this.compassNeedle.style.transform = "translate(-50%, -50%) rotate(0deg)";
+      return;
+    }
+    this.compassEl.classList.remove("found");
+    this.compassLabel.textContent = "Clue";
+    this.compassNeedle.style.transform = `translate(-50%, -50%) rotate(${bearingDeg}deg)`;
   }
 
   showHint(text: string): void {

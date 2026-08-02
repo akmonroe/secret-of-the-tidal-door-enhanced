@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -14,6 +15,11 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  position: fixed;
+  inset: 0;
   color: #f1faee;
 }
 
@@ -22,12 +28,22 @@ body {
   height: 100%;
   position: fixed;
   inset: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+  /* Block iOS double-tap / pinch zoom on the game surface */
+  -ms-touch-action: none;
 }
 
 #game-container canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
+  touch-action: none;
+  -ms-touch-action: none;
+  outline: none;
+  /* Prevent image-style pinch zoom on the WebGL canvas */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 /* —— Overlays —— */
@@ -241,12 +257,136 @@ body {
   text-align: center;
 }
 
+/* Treasure compass — upper-right HUD */
+#hud-compass {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 15;
+  pointer-events: none;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.compass-dial {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 35%,
+    rgba(30, 55, 80, 0.92),
+    rgba(10, 22, 40, 0.88)
+  );
+  border: 2px solid rgba(168, 218, 220, 0.55);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.4),
+    inset 0 0 12px rgba(0, 0, 0, 0.35);
+}
+
+.compass-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.compass-mark.n {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(168, 218, 220, 0.75);
+}
+
+.compass-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 48px;
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: center center;
+  transition: transform 0.08s linear;
+  will-change: transform;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.compass-arrow-head {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 20px solid #ffd166;
+}
+
+.compass-arrow-tail {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 16px solid rgba(200, 90, 90, 0.9);
+  margin-top: 2px;
+}
+
+.compass-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: #f1faee;
+  border: 2px solid #2a9d8f;
+  box-shadow: 0 0 6px rgba(42, 157, 143, 0.6);
+  z-index: 2;
+}
+
+.compass-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffd166;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  background: rgba(10, 22, 40, 0.55);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+#hud-compass.found .compass-arrow-head {
+  border-bottom-color: #2a9d8f;
+  opacity: 0.55;
+}
+
+#hud-compass.found .compass-arrow-tail {
+  opacity: 0.4;
+}
+
+#hud-compass.found .compass-label {
+  color: #a8dadc;
+}
+
 /* Touch controls */
 #touch-ui {
   position: fixed;
   inset: 0;
   z-index: 12;
   pointer-events: none;
+  touch-action: none;
 }
 
 .stick-base {
@@ -303,6 +443,9 @@ body {
   line-height: 1.2;
   pointer-events: auto;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .dodge-btn.pressed {

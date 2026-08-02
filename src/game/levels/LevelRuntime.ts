@@ -297,11 +297,11 @@ export class LevelRuntime {
     this.player.update(dt, input, this.maze);
     this.maze.blockers = staticBlockers;
 
-    // Near yellow/red boundary — warn before the fall
+    // Near world rim — warn before the fall
     if (!this.player.falling && this.player.isNearWorldEdge(this.maze, 2.4)) {
       if (this.clock >= this.edgeWarnAt) {
         this.edgeWarnAt = this.clock + 2.8;
-        this.callbacks.onHint("⚠ DANGER — yellow edge! Stay inside or you will fall!");
+        this.callbacks.onHint("⚠ DANGER — world edge! Stay inside or you will fall!");
       }
     }
 
@@ -386,6 +386,28 @@ export class LevelRuntime {
     collectClue(this.def.clue);
     unlockLevel(this.def.id + 1);
     this.callbacks.onComplete(this.def.clue, this.def.clueText);
+  }
+
+  /**
+   * Compass bearing for the HUD.
+   * Returns degrees for CSS rotate() so "up on dial" = direction to the
+   * level clue/treasure relative to the player's facing on XZ.
+   * null when there is no active target (already collected / missing).
+   */
+  getCompassBearingDeg(): number | null {
+    if (this.won || !this.clueMesh || !this.player) return null;
+    const dx = this.clueMesh.position.x - this.player.position.x;
+    const dz = this.clueMesh.position.z - this.player.position.z;
+    if (dx * dx + dz * dz < 1e-6) return 0;
+    const toTreasure = Math.atan2(dx, dz);
+    const facing = Math.atan2(this.player.facing.x, this.player.facing.z);
+    // CSS rotate is clockwise-positive from "up"; negate so ahead = needle up
+    return ((-(toTreasure - facing) * 180) / Math.PI + 540) % 360 - 180;
+  }
+
+  /** True after the level clue was collected this run. */
+  isClueCollected(): boolean {
+    return this.won;
   }
 
   dispose(): void {

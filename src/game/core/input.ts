@@ -72,20 +72,33 @@ export class Input {
       this.stickBase.style.top = "calc(100% - 100px)";
     };
 
-    window.addEventListener("pointerdown", onDown);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
+    // Capture stick on the left half; keep dodge button free (it stopsPropagation)
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerup", onUp, { passive: true });
+    window.addEventListener("pointercancel", onUp, { passive: true });
 
-    this.dodgeBtn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this.dodgeQueued = true;
-      this.dodgeBtn.classList.add("pressed");
-    });
+    this.dodgeBtn.addEventListener(
+      "pointerdown",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.dodgeQueued = true;
+        this.dodgeBtn.classList.add("pressed");
+      },
+      { passive: false },
+    );
     this.dodgeBtn.addEventListener("pointerup", () => {
       this.dodgeBtn.classList.remove("pressed");
     });
+    // Avoid iOS callout / double-tap on the dodge control
+    this.dodgeBtn.addEventListener(
+      "touchend",
+      (e) => {
+        e.preventDefault();
+      },
+      { passive: false },
+    );
   }
 
   private updateStick(cx: number, cy: number): void {

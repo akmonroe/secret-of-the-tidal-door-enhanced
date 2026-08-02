@@ -1,6 +1,7 @@
 # 3D models (Blender → GLB)
 
-Built with `tools/blender/build_character_glb.py` + Imagine textures UV-mapped via Smart UV Project (`island_margin=0.06`).
+Built with Blender scripts, then **mobile-optimized** via `tools/blender/optimize_all_glbs.py`:
+Smart UV Project + Imagine 512² albedo + decimate to face budgets (~0.4–2.5k tris per asset).
 
 | Path | Source texture | Notes |
 |------|----------------|-------|
