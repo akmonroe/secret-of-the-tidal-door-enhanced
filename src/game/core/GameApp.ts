@@ -212,6 +212,9 @@ export class GameApp {
       });
       this.level.envMap = this.envMap;
       this.level.start();
+      (
+        window as unknown as { __snapAnimal?: (k?: string) => boolean }
+      ).__snapAnimal = (k) => this.level?.snapPlayerNear(k) ?? false;
     } catch (err) {
       console.error("[startLevel]", err);
       this.ui.showHint("Level failed to start");

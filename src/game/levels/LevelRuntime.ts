@@ -13,6 +13,7 @@ import {
   resolveCollision,
 } from "../world/MazeBuilder";
 import { makeCluePedestal } from "../world/meshes";
+import { orientStandSprite } from "../world/imagineTextures";
 import {
   buildZones,
   type LiveZone,
@@ -61,6 +62,8 @@ export class LevelRuntime {
   }[] = [];
   /** Mist planes + droplet streaks on the world rim */
   private edgeFx: THREE.Object3D[] = [];
+  /** Vertical art cards (palms, rocks, birds, jellies) that must face the camera */
+  private spriteGroups: THREE.Object3D[] = [];
   /** Throttle “danger edge” hints so they don't spam */
   private edgeWarnAt = 0;
 
@@ -177,6 +180,13 @@ export class LevelRuntime {
     this.clueMesh = makeCluePedestal();
     this.clueMesh.position.set(clueAt.x, 0, clueAt.z);
     this.scene.add(this.clueMesh);
+
+    this.spriteGroups = [];
+    this.scene.traverse((obj) => {
+      if (obj.userData?.spriteLayout === "stand" && obj.userData?.billboard) {
+        this.spriteGroups.push(obj);
+      }
+    });
 
     this.won = false;
     this.dead = false;
@@ -377,7 +387,6 @@ export class LevelRuntime {
       const shell = this.clueMesh.userData.shell as THREE.Mesh | undefined;
       if (shell) {
         shell.position.y = 0.75 + Math.sin(this.clock * 3) * 0.12;
-        shell.rotation.y += dt * 1.5;
       }
       const dx = this.player.position.x - this.clueMesh.position.x;
       const dz = this.player.position.z - this.clueMesh.position.z;
@@ -393,6 +402,24 @@ export class LevelRuntime {
     );
     camera.position.lerp(target, 1 - Math.exp(-5 * dt));
     camera.lookAt(this.player.position.x, 0.5, this.player.position.z);
+    camera.updateMatrixWorld();
+
+    for (const g of this.spriteGroups) {
+      orientStandSprite(
+        g,
+        camera,
+        (g.userData.vx as number) ?? 0,
+        (g.userData.vz as number) ?? 0,
+      );
+    }
+    if (this.clueMesh) {
+      const shell = this.clueMesh.userData.shell as THREE.Object3D | undefined;
+      if (shell) {
+        const dx = camera.position.x - this.clueMesh.position.x;
+        const dz = camera.position.z - this.clueMesh.position.z;
+        shell.rotation.y = Math.atan2(dx, dz);
+      }
+    }
 
     this.callbacks.onHud(
       this.player.hp,
@@ -400,6 +427,16 @@ export class LevelRuntime {
       this.def.objective,
       getSave().clues.length,
     );
+  }
+
+  /** Test helper: stand the traveler just behind an animal so we can see it. */
+  snapPlayerNear(kind?: string): boolean {
+    const h =
+      (kind ? this.hazards.find((x) => x.kind === kind) : undefined) ??
+      this.hazards[0];
+    if (!h || !this.player) return false;
+    this.player.spawnAt(h.group.position.x + 2.5, h.group.position.z + 3.4);
+    return true;
   }
 
   private complete(): void {

@@ -269,3 +269,68 @@ export function makeImagineBillboard(
   mesh.userData.billboard = true;
   return mesh;
 }
+
+/**
+ * Top-down animal stamped onto the water/sand. Image must be nose-at-top;
+ * after rotateX(-90) the nose points +Z so Hazard.faceVelocity matches.
+ */
+export function makeImagineGroundDecal(
+  key: ImagineSpriteKey,
+  width: number,
+  length: number,
+): THREE.Mesh | null {
+  const map = tryImagineSprite(key);
+  if (!map) return null;
+  const mat = new THREE.MeshStandardMaterial({
+    map,
+    transparent: true,
+    alphaTest: 0.14,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+    roughness: 0.4,
+    metalness: 0.05,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, length), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 0.1;
+  mesh.castShadow = true;
+  mesh.userData.imagineSprite = key;
+  mesh.userData.groundDecal = true;
+  return mesh;
+}
+
+const _spritePos = new THREE.Vector3();
+
+/**
+ * Keep vertical art cards facing the camera so they never read as paper edges.
+ * Optional vx/vz flips left-facing sprites so the nose follows on-screen motion.
+ */
+export function orientStandSprite(
+  group: THREE.Object3D,
+  camera: THREE.Camera,
+  vx = 0,
+  vz = 0,
+): void {
+  if (group.userData?.spriteLayout === "swim") return;
+  const billboard = group.userData?.billboard as THREE.Object3D | undefined;
+  if (!billboard) return;
+
+  group.getWorldPosition(_spritePos);
+  const dx = camera.position.x - _spritePos.x;
+  const dz = camera.position.z - _spritePos.z;
+  group.rotation.y = Math.atan2(dx, dz);
+
+  const dist = Math.hypot(dx, dz) || 1;
+  const elev = Math.atan2(camera.position.y - _spritePos.y, dist);
+  billboard.rotation.x = -elev * 0.4;
+
+  const rx = camera.matrixWorld.elements[0];
+  const rz = camera.matrixWorld.elements[2];
+  const alongRight = vx * rx + vz * rz;
+  if (Math.abs(alongRight) > 0.22) {
+    group.userData.flipSign = alongRight > 0 ? -1 : 1;
+  }
+  const sign = (group.userData.flipSign as number) ?? 1;
+  const mag = Math.abs(billboard.scale.x) || 1;
+  billboard.scale.x = mag * sign;
+}

@@ -474,6 +474,8 @@ export class Hazard {
     });
 
     this.faceVelocity(dt);
+    this.group.userData.vx = this.vx;
+    this.group.userData.vz = this.vz;
   }
 
   private pickNewDirection(bias?: "x" | "z" | "diag"): void {
@@ -504,6 +506,9 @@ export class Hazard {
   }
 
   private faceVelocity(dt = 1 / 60): void {
+    // Vertical art cards face the camera each frame — yawing them to velocity
+    // shows the camera their thin edge (the "flat paper animal" bug).
+    if (this.group.userData?.spriteLayout === "stand") return;
     if (Math.abs(this.vx) + Math.abs(this.vz) < 0.01) return;
     const target = Math.atan2(this.vx, this.vz);
     let yaw = this.group.rotation.y;

@@ -18,6 +18,7 @@ import {
 } from "./textures";
 import {
   makeImagineBillboard,
+  makeImagineGroundDecal,
   tryImagineSprite,
   type ImagineSpriteKey,
 } from "./imagineTextures";
@@ -108,6 +109,7 @@ function tryPropBillboard(
   g.add(billboard);
   g.userData.imagineMode = true;
   g.userData.billboard = billboard;
+  g.userData.spriteLayout = "stand";
   return g;
 }
 
@@ -959,15 +961,22 @@ function makeCreatureFromImagine(
   width: number,
   height: number,
   shadowR: number,
+  layout: "swim" | "stand" = "stand",
 ): THREE.Group | null {
-  const billboard = makeImagineBillboard(key, width, height);
-  if (!billboard) return null;
+  const sprite =
+    layout === "swim"
+      ? makeImagineGroundDecal(key, width, height)
+      : makeImagineBillboard(key, width, height);
+  if (!sprite) return null;
   const g = new THREE.Group();
-  billboard.position.y = height * 0.45;
-  g.add(billboard);
+  if (layout === "stand") {
+    sprite.position.y = height * 0.45;
+  }
+  g.add(sprite);
   addBlobShadow(g, shadowR);
   g.userData.imagineMode = true;
-  g.userData.billboard = billboard;
+  g.userData.billboard = sprite;
+  g.userData.spriteLayout = layout;
   return g;
 }
 
@@ -976,7 +985,7 @@ function makeCreatureFromImagine(
  * (`atan2(vx, vz)`) matches movement — same convention as the player.
  */
 export function makeShark(): THREE.Group {
-  const img = makeCreatureFromImagine("shark", 1.7, 1.1, 0.65);
+  const img = makeCreatureFromImagine("shark", 0.95, 1.9, 0.7, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("shark", 0.65);
   if (glb) return glb;
@@ -1021,7 +1030,7 @@ export function makeShark(): THREE.Group {
 }
 
 export function makeJelly(): THREE.Group {
-  const img = makeCreatureFromImagine("jelly", 1.2, 1.4, 0.4);
+  const img = makeCreatureFromImagine("jelly", 1.2, 1.4, 0.4, "stand");
   if (img) return img;
   const glb = makeCreatureFromGlb("jelly", 0.4);
   if (glb) return glb;
@@ -1061,7 +1070,7 @@ export function makeJelly(): THREE.Group {
 }
 
 export function makeRay(): THREE.Group {
-  const img = makeCreatureFromImagine("ray", 1.8, 1.0, 0.7);
+  const img = makeCreatureFromImagine("ray", 1.55, 1.7, 0.75, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("ray", 0.7);
   if (glb) return glb;
@@ -1098,7 +1107,7 @@ export function makeRay(): THREE.Group {
 }
 
 export function makePelican(): THREE.Group {
-  const img = makeCreatureFromImagine("pelican", 1.6, 1.5, 0.55);
+  const img = makeCreatureFromImagine("pelican", 1.55, 1.45, 0.55, "stand");
   if (img) return img;
   const glb = makeCreatureFromGlb("pelican", 0.55);
   if (glb) return glb;
@@ -1158,7 +1167,7 @@ export function makePelican(): THREE.Group {
 }
 
 export function makeGull(): THREE.Group {
-  const img = makeCreatureFromImagine("gull", 1.3, 1.15, 0.4);
+  const img = makeCreatureFromImagine("gull", 1.3, 1.15, 0.4, "stand");
   if (img) return img;
   const glb = makeCreatureFromGlb("gull", 0.4);
   if (glb) return glb;
@@ -1209,7 +1218,7 @@ export function makeGull(): THREE.Group {
 
 /** Barrel-bodied sea lion for kelp lanes */
 export function makeSeaLion(): THREE.Group {
-  const img = makeCreatureFromImagine("sealion", 1.6, 1.2, 0.55);
+  const img = makeCreatureFromImagine("sealion", 0.88, 1.55, 0.6, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("sealion", 0.55);
   if (glb) return glb;
@@ -1255,7 +1264,7 @@ export function makeSeaLion(): THREE.Group {
 
 /** Deep anglerfish — lethal boss silhouette with glowing lure (toy, not horror) */
 export function makeAngler(): THREE.Group {
-  const img = makeCreatureFromImagine("angler", 1.7, 1.6, 0.65);
+  const img = makeCreatureFromImagine("angler", 1.2, 1.55, 0.65, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("angler", 0.65);
   if (glb) return glb;
@@ -1326,7 +1335,7 @@ export function makeAngler(): THREE.Group {
 
 /** Fast silver marlin — lethal spear fish for current raceway / late seas */
 export function makeMarlin(): THREE.Group {
-  const img = makeCreatureFromImagine("marlin", 2.0, 1.15, 0.7);
+  const img = makeCreatureFromImagine("marlin", 0.72, 2.15, 0.7, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("marlin", 0.7);
   if (glb) return glb;
