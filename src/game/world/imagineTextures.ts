@@ -36,6 +36,14 @@ import adventurerGirlFaceUrl from "../../assets/imagine/characters/adventurer_gi
 import adventurerBoyFaceUrl from "../../assets/imagine/characters/adventurer_boy_face.webp";
 import adventurerGirlTopUrl from "../../assets/imagine/characters/adventurer_girl_top.webp";
 import adventurerBoyTopUrl from "../../assets/imagine/characters/adventurer_boy_top.webp";
+import adventurerGirlDownUrl from "../../assets/imagine/characters/adventurer_girl_down.webp";
+import adventurerGirlUpUrl from "../../assets/imagine/characters/adventurer_girl_up.webp";
+import adventurerGirlLeftUrl from "../../assets/imagine/characters/adventurer_girl_left.webp";
+import adventurerGirlRightUrl from "../../assets/imagine/characters/adventurer_girl_right.webp";
+import adventurerBoyDownUrl from "../../assets/imagine/characters/adventurer_boy_down.webp";
+import adventurerBoyUpUrl from "../../assets/imagine/characters/adventurer_boy_up.webp";
+import adventurerBoyLeftUrl from "../../assets/imagine/characters/adventurer_boy_left.webp";
+import adventurerBoyRightUrl from "../../assets/imagine/characters/adventurer_boy_right.webp";
 
 import bubbleUrl from "../../assets/imagine/fx/bubble.webp";
 import ventPlumeUrl from "../../assets/imagine/fx/vent_plume.webp";
@@ -71,6 +79,14 @@ export type ImagineSpriteKey =
   | "adventurer_boy_face"
   | "adventurer_girl_top"
   | "adventurer_boy_top"
+  | "adventurer_girl_down"
+  | "adventurer_girl_up"
+  | "adventurer_girl_left"
+  | "adventurer_girl_right"
+  | "adventurer_boy_down"
+  | "adventurer_boy_up"
+  | "adventurer_boy_left"
+  | "adventurer_boy_right"
   | "bubble"
   | "vent_plume"
   | "current_arrow";
@@ -106,6 +122,14 @@ const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
   adventurer_boy_face: adventurerBoyFaceUrl,
   adventurer_girl_top: adventurerGirlTopUrl,
   adventurer_boy_top: adventurerBoyTopUrl,
+  adventurer_girl_down: adventurerGirlDownUrl,
+  adventurer_girl_up: adventurerGirlUpUrl,
+  adventurer_girl_left: adventurerGirlLeftUrl,
+  adventurer_girl_right: adventurerGirlRightUrl,
+  adventurer_boy_down: adventurerBoyDownUrl,
+  adventurer_boy_up: adventurerBoyUpUrl,
+  adventurer_boy_left: adventurerBoyLeftUrl,
+  adventurer_boy_right: adventurerBoyRightUrl,
   bubble: bubbleUrl,
   vent_plume: ventPlumeUrl,
   current_arrow: currentArrowUrl,
@@ -234,6 +258,14 @@ const CHARACTER_KEYS: ImagineSpriteKey[] = [
   "adventurer_boy_face",
   "adventurer_girl_top",
   "adventurer_boy_top",
+  "adventurer_girl_down",
+  "adventurer_girl_up",
+  "adventurer_girl_left",
+  "adventurer_girl_right",
+  "adventurer_boy_down",
+  "adventurer_boy_up",
+  "adventurer_boy_left",
+  "adventurer_boy_right",
 ];
 
 /** Portraits + face cards so character select / player mesh never wait on fish. */

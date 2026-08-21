@@ -92,7 +92,8 @@ export class Hazard {
               : kind === "sealion"
                 ? 2.45
                 : 2.2;
-    this.patrolSpeed = opts.speed ?? defaultSpeed;
+    // Level values were tuned for the old isometric cam — bump them for top-down.
+    this.patrolSpeed = (opts.speed ?? defaultSpeed) * 1.85;
     this.speed = this.patrolSpeed;
     this.t = Math.random() * Math.PI * 2;
     this.homeX = x;
@@ -186,7 +187,7 @@ export class Hazard {
     this.lastX = x;
     this.lastZ = z;
     if (Math.abs(this.vx) + Math.abs(this.vz) >= 0.01) {
-      this.group.rotation.y = Math.atan2(this.vx, this.vz);
+      this.group.rotation.y = this.yawForVelocity();
     }
     this.wanderTimer = 1.5 + Math.random() * 2.5;
   }
@@ -505,13 +506,22 @@ export class Hazard {
     this.vz = (this.vz / len) * targetSp;
   }
 
+  private yawForVelocity(): number {
+    let yaw = Math.atan2(this.vx, this.vz);
+    // Swim/fly decals: top of the image maps to world −Z after rotateX(-90),
+    // so nose-at-top art needs a half-turn to lead with the snout.
+    if (this.group.userData?.spriteLayout === "swim") yaw += Math.PI;
+    return yaw;
+  }
+
   private faceVelocity(dt = 1 / 60): void {
     // Vertical art cards face the camera each frame — yawing them to velocity
     // shows the camera their thin edge (the "flat paper animal" bug).
     if (this.group.userData?.spriteLayout === "stand") return;
     if (this.group.userData?.spriteLayout === "prop") return;
+    if (this.group.userData?.spriteLayout === "walk4") return;
     if (Math.abs(this.vx) + Math.abs(this.vz) < 0.01) return;
-    const target = Math.atan2(this.vx, this.vz);
+    const target = this.yawForVelocity();
     let yaw = this.group.rotation.y;
     let diff = target - yaw;
     while (diff > Math.PI) diff -= Math.PI * 2;

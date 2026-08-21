@@ -377,6 +377,25 @@ export class LevelRuntime {
       this.hazards[0];
     if (!h || !this.player) return false;
     this.player.spawnAt(h.group.position.x + 2.5, h.group.position.z + 3.4);
+    (
+      window as unknown as {
+        __animalDebug?: () => {
+          kind: string;
+          x: number;
+          z: number;
+          yaw: number;
+          vx: number;
+          vz: number;
+        };
+      }
+    ).__animalDebug = () => ({
+      kind: h.kind,
+      x: h.group.position.x,
+      z: h.group.position.z,
+      yaw: h.group.rotation.y,
+      vx: (h.group.userData.vx as number) ?? 0,
+      vz: (h.group.userData.vz as number) ?? 0,
+    });
     return true;
   }
 

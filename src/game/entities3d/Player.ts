@@ -411,15 +411,35 @@ export class Player {
     this.applyHitFlashVisuals(shadow);
   }
 
-  /** Soft-realism player: face travel dir, bounce while moving, invuln blink. */
+  /** Soft-realism player: 4-dir overworld sprite, bounce while moving, invuln blink. */
   private animateImagineSprite(dt: number): void {
     const shadow = this.group.userData.shadow as THREE.Mesh | undefined;
     const billboard = this.group.userData.billboard as THREE.Mesh | undefined;
     const spd = Math.hypot(this.velocity.x, this.velocity.z);
     const moving = spd > 0.35;
+    const layout = this.group.userData.spriteLayout as string | undefined;
 
-    if (this.facing.lengthSq() > 0.01) {
-      const target = Math.atan2(this.facing.x, this.facing.z);
+    if (layout === "walk4") {
+      this.group.rotation.y = 0;
+      const fx = this.facing.x;
+      const fz = this.facing.z;
+      let dir = (this.group.userData.facingDir as string) || "down";
+      if (Math.abs(fx) + Math.abs(fz) > 0.12) {
+        if (Math.abs(fz) >= Math.abs(fx)) dir = fz >= 0 ? "down" : "up";
+        else dir = fx >= 0 ? "right" : "left";
+      }
+      const maps = this.group.userData.dirMaps as
+        | Record<string, THREE.Texture | null | undefined>
+        | undefined;
+      const mat = billboard?.material as THREE.MeshStandardMaterial | undefined;
+      const next = maps?.[dir];
+      if (mat && next && mat.map !== next) {
+        mat.map = next;
+        mat.needsUpdate = true;
+      }
+      this.group.userData.facingDir = dir;
+    } else if (this.facing.lengthSq() > 0.01) {
+      const target = Math.atan2(this.facing.x, this.facing.z) + Math.PI;
       let yaw = this.group.rotation.y;
       let diff = target - yaw;
       while (diff > Math.PI) diff -= Math.PI * 2;

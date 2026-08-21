@@ -701,6 +701,47 @@ export function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE
  * Scuba gear toggled when swimming underwater.
  */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
+  const prefix = character === "girl" ? "adventurer_girl" : "adventurer_boy";
+  const dirKeys = {
+    down: `${prefix}_down` as ImagineSpriteKey,
+    up: `${prefix}_up` as ImagineSpriteKey,
+    left: `${prefix}_left` as ImagineSpriteKey,
+    right: `${prefix}_right` as ImagineSpriteKey,
+  };
+  const body = makeImagineGroundDecal(dirKeys.down, 0.72, 1.2);
+  if (body) {
+    const g = new THREE.Group();
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.32, 18),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.03;
+    g.add(shadow);
+    body.position.y = 0.4;
+    body.renderOrder = 8;
+    g.add(body);
+    g.userData = {
+      hips: g,
+      shadow,
+      billboard: body,
+      imagineMode: true,
+      spriteLayout: "walk4",
+      facingDir: "down",
+      dirMaps: {
+        down: tryImagineSprite(dirKeys.down),
+        up: tryImagineSprite(dirKeys.up) ?? tryImagineSprite(dirKeys.down),
+        left: tryImagineSprite(dirKeys.left) ?? tryImagineSprite(dirKeys.down),
+        right: tryImagineSprite(dirKeys.right) ?? tryImagineSprite(dirKeys.down),
+      },
+      scubaGear: undefined,
+      landMeshes: [],
+      suitMeshes: [],
+      hasScuba: scuba,
+    };
+    return g;
+  }
+
   const topKey = character === "girl" ? "adventurer_girl_top" : "adventurer_boy_top";
   const top = makeImagineGroundDecal(topKey, 0.78, 1.32);
   if (top) {
@@ -949,12 +990,11 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
 }
 
 /** Prefer Blender GLB creature; fall back to Imagine billboard / low-poly. */
-function makeCreatureFromGlb(key: Model3dKey, shadowR: number): THREE.Group | null {
+function makeCreatureFromGlb(key: Model3dKey, _shadowR: number): THREE.Group | null {
   const body = cloneModel3d(key);
   if (!body) return null;
   const g = new THREE.Group();
   g.add(body);
-  addBlobShadow(g, shadowR);
   g.userData.glbMode = true;
   g.userData.model3dKey = key;
   return g;
@@ -965,7 +1005,7 @@ function makeCreatureFromImagine(
   key: ImagineSpriteKey,
   width: number,
   height: number,
-  shadowR: number,
+  _shadowR: number,
   layout: "swim" | "stand" = "stand",
 ): THREE.Group | null {
   const sprite =
@@ -978,7 +1018,6 @@ function makeCreatureFromImagine(
     sprite.position.y = height * 0.45;
   }
   g.add(sprite);
-  addBlobShadow(g, shadowR);
   g.userData.imagineMode = true;
   g.userData.billboard = sprite;
   g.userData.spriteLayout = layout;
@@ -1030,7 +1069,6 @@ export function makeShark(): THREE.Group {
     eye.position.set(sx * 0.12, 0.48, 0.55);
     g.add(eye);
   }
-  addBlobShadow(g, 0.6);
   return g;
 }
 
@@ -1107,7 +1145,6 @@ export function makeRay(): THREE.Group {
   belly.scale.set(0.9, 0.12, 0.7);
   belly.position.set(0, 0.16, 0.05);
   g.add(belly);
-  addBlobShadow(g, 0.65);
   return g;
 }
 
@@ -1166,7 +1203,6 @@ export function makePelican(): THREE.Group {
     eye.position.set(sx * 0.1, 0.9, 0.4);
     g.add(eye);
   }
-  addBlobShadow(g, 0.5);
   g.userData.wings = [wingLPivot, wingRPivot];
   return g;
 }
@@ -1216,7 +1252,6 @@ export function makeGull(): THREE.Group {
   back.scale.set(1.1, 0.5, 1);
   back.position.set(0, 0.52, -0.05);
   g.add(back);
-  addBlobShadow(g, 0.35);
   g.userData.wings = [wingLPivot, wingRPivot];
   return g;
 }
@@ -1263,7 +1298,6 @@ export function makeSeaLion(): THREE.Group {
     eye.position.set(sx * 0.1, 0.48, 0.68);
     g.add(eye);
   }
-  addBlobShadow(g, 0.55);
   return g;
 }
 
@@ -1334,7 +1368,6 @@ export function makeAngler(): THREE.Group {
     fin.position.set(sx * 0.42, 0.35, -0.1);
     g.add(fin);
   }
-  addBlobShadow(g, 0.65);
   return g;
 }
 
@@ -1389,7 +1422,6 @@ export function makeMarlin(): THREE.Group {
     eye.position.set(sx * 0.11, 0.48, 0.55);
     g.add(eye);
   }
-  addBlobShadow(g, 0.7);
   return g;
 }
 
