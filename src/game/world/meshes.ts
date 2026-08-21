@@ -620,7 +620,7 @@ function collectGlbScubaGear(
  * - Single joined mesh → bob/lean only via animateGlbBody (glbMode)
  * Scuba accessories from GLB or procedural fallback.
  */
-function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group | null {
+export function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group | null {
   const key: Model3dKey =
     character === "girl" ? "adventurer_girl" : "adventurer_boy";
   const body = cloneModel3d(key);
