@@ -203,7 +203,7 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
       }
 
       if (ch === "#") {
-        const wall = makeWallBox(CELL * 0.95, wallH, CELL * 0.95, biome.wall, wallStyle);
+        const wall = makeWallBox(CELL * 0.9, wallH, CELL * 0.9, biome.wall, wallStyle);
         wall.position.x = x;
         wall.position.z = z;
         group.add(wall);

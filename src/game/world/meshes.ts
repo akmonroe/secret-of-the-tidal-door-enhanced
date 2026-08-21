@@ -161,7 +161,7 @@ export function makeWallBox(
   d: number,
   color: number,
   style: WallStyle = "rock",
-): THREE.Mesh {
+): THREE.Group {
   let src: THREE.Texture | null = null;
   if (style === "stucco") src = wallStuccoTexture();
   else if (style === "hull") src = hullTexture();
@@ -170,13 +170,32 @@ export function makeWallBox(
   else if (style === "basalt") src = basaltTexture();
   else if (style === "ice") src = iceTexture();
   else src = rockTexture();
-  const slab = 0.28;
   const map = src ? mapForMesh(src, 1, 1) : null;
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, slab, d), toonMap(color, map));
-  mesh.castShadow = false;
-  mesh.receiveShadow = true;
-  mesh.position.y = slab / 2;
-  return mesh;
+  const g = new THREE.Group();
+  // Dark grout pad so every cell reads as its own block from overhead.
+  const outline = new THREE.Mesh(
+    new THREE.BoxGeometry(w + 0.08, 0.22, d + 0.08),
+    new THREE.MeshBasicMaterial({ color: 0x1a1612 }),
+  );
+  outline.position.y = 0.11;
+  g.add(outline);
+  const fill = new THREE.Mesh(
+    new THREE.BoxGeometry(w * 0.88, 0.34, d * 0.88),
+    new THREE.MeshBasicMaterial({
+      color: 0xcec6bc,
+      map: map ?? undefined,
+    }),
+  );
+  fill.position.y = 0.2;
+  g.add(fill);
+  // Keep biome tint as a thin inner rim so ice/coral/beach still differ.
+  const rim = new THREE.Mesh(
+    new THREE.BoxGeometry(w * 0.9, 0.04, d * 0.9),
+    new THREE.MeshBasicMaterial({ color: darken(color, 0.55) }),
+  );
+  rim.position.y = 0.38;
+  g.add(rim);
+  return g;
 }
 
 export function makeFloorTile(
@@ -708,7 +727,7 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
     left: `${prefix}_left` as ImagineSpriteKey,
     right: `${prefix}_right` as ImagineSpriteKey,
   };
-  const body = makeImagineGroundDecal(dirKeys.down, 0.72, 1.2);
+  const body = makeImagineGroundDecal(dirKeys.down, 0.9, 1.45);
   if (body) {
     const g = new THREE.Group();
     const shadow = new THREE.Mesh(

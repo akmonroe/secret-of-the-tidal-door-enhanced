@@ -73,7 +73,7 @@ export class LevelRuntime {
     const biome = getBiome(this.def.biome);
     this.scene.clear();
     this.scene.background = new THREE.Color(biome.sky);
-    this.scene.fog = new THREE.Fog(biome.fog, 90, 180);
+    this.scene.fog = null;
     // Flat map: no IBL, so water/sand don't pick up a 3D sky reflection
     this.scene.environment = null;
 

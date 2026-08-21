@@ -12,8 +12,8 @@ type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 export class GameApp {
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.OrthographicCamera;
-  /** World units visible vertically — pure top-down map. */
-  private viewHeight = 22;
+  /** Shortest on-screen axis shows at least this many world units. */
+  private minView = 30;
   private input = new Input();
   private ui: GameUI;
   private mode: Mode = "menu";
@@ -51,9 +51,8 @@ export class GameApp {
       typeof window !== "undefined" && window.innerHeight > 0
         ? window.innerWidth / window.innerHeight
         : 16 / 9;
-    const vh = this.viewHeight;
-    const vw = vh * aspect;
-    this.camera = new THREE.OrthographicCamera(-vw / 2, vw / 2, vh / 2, -vh / 2, 0.1, 80);
+    const { vw, vh } = this.viewExtents(aspect);
+    this.camera = new THREE.OrthographicCamera(-vw / 2, vw / 2, vh / 2, -vh / 2, 0.1, 120);
     this.camera.up.set(0, 0, -1);
     this.camera.position.set(0, 36, 0);
     this.camera.rotation.set(-Math.PI / 2, 0, 0);
@@ -146,12 +145,20 @@ export class GameApp {
     );
   }
 
+  private viewExtents(aspect: number): { vw: number; vh: number } {
+    if (aspect >= 1) {
+      const vh = this.minView;
+      return { vw: vh * aspect, vh };
+    }
+    const vw = this.minView;
+    return { vw, vh: vw / aspect };
+  }
+
   private onResize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const aspect = h > 0 ? w / h : 16 / 9;
-    const vh = this.viewHeight;
-    const vw = vh * aspect;
+    const { vw, vh } = this.viewExtents(aspect);
     this.camera.left = -vw / 2;
     this.camera.right = vw / 2;
     this.camera.top = vh / 2;
