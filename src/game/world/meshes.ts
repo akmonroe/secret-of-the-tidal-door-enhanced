@@ -95,21 +95,20 @@ export type GroundStyle =
   | "ice"
   | "basalt";
 
-/** Isolated Imagine prop as a vertical card — used when the 3D kit would look toy-like. */
-function tryPropBillboard(
+/** Isolated Imagine prop as a top-down decal. */
+function tryPropDecal(
   key: ImagineSpriteKey,
   width: number,
-  height: number,
+  length: number,
 ): THREE.Group | null {
-  const billboard = makeImagineBillboard(key, width, height);
-  if (!billboard) return null;
+  const decal = makeImagineGroundDecal(key, width, length);
+  if (!decal) return null;
   const g = new THREE.Group();
-  billboard.position.y = height * 0.5;
-  billboard.castShadow = true;
-  g.add(billboard);
+  g.add(decal);
+  addBlobShadow(g, Math.max(0.35, width * 0.28));
   g.userData.imagineMode = true;
-  g.userData.billboard = billboard;
-  g.userData.spriteLayout = "stand";
+  g.userData.billboard = decal;
+  g.userData.spriteLayout = "prop";
   return g;
 }
 
@@ -137,18 +136,12 @@ export function makeGround(
 export function makeWater(size: number, color: number): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(size, size, 48, 48);
   const map = mapForMesh(waterTexture(), size / 7, size / 7);
-  const mat = new THREE.MeshPhysicalMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     color,
     map,
-    roughness: 0.18,
-    metalness: 0.08,
-    transmission: 0.22,
-    thickness: 0.6,
-    ior: 1.33,
-    transparent: true,
-    opacity: 0.88,
-    envMapIntensity: 1.35,
-    specularIntensity: 0.9,
+    roughness: 0.62,
+    metalness: 0.04,
+    envMapIntensity: 0.2,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
@@ -170,7 +163,7 @@ uniform float uTime;`,
         `#include <begin_vertex>
 float wx = transformed.x * 0.35 + uTime * 0.7;
 float wz = transformed.z * 0.28 + uTime * 0.45;
-transformed.y += sin(wx) * 0.07 + sin(wz * 1.3) * 0.045;`,
+transformed.y += sin(wx) * 0.02 + sin(wz * 1.3) * 0.012;`,
       );
     mat.userData.shader = shader;
   };
@@ -227,8 +220,6 @@ export function makeFloorTile(
 }
 
 export function makeRock(color = 0xb8b0a8): THREE.Group {
-  const img = tryPropBillboard("rock", 1.25, 0.95);
-  if (img) return img;
   const g = new THREE.Group();
   // Soft pastel rock pile — toy stone, not granite grey
   const main = color;
@@ -253,7 +244,7 @@ export function makeRock(color = 0xb8b0a8): THREE.Group {
 }
 
 export function makePalm(): THREE.Group {
-  const img = tryPropBillboard("palm", 1.55, 2.55);
+  const img = tryPropDecal("palm", 2.2, 2.2);
   if (img) return img;
   const g = new THREE.Group();
   // Candy-brown trunk with ring bands
@@ -300,8 +291,6 @@ export function makePalm(): THREE.Group {
 }
 
 export function makeCrate(): THREE.Group {
-  const img = tryPropBillboard("crate", 1.05, 0.95);
-  if (img) return img;
   const g = new THREE.Group();
   const map = mapForMesh(crateTexture(), 1, 1);
   const box = new THREE.Mesh(
@@ -427,10 +416,10 @@ export function makeCluePedestal(): THREE.Group {
   base.position.y = 0.2;
   g.add(base);
   // Pearl shell — saturated gold, or Imagine conch
-  const shellBill = makeImagineBillboard("clue_shell", 0.78, 0.62);
+  const shellBill = makeImagineGroundDecal("clue_shell", 0.72, 0.72);
   let shell: THREE.Object3D;
   if (shellBill) {
-    shellBill.position.y = 0.88;
+    shellBill.position.y = 0.1;
     g.add(shellBill);
     shell = shellBill;
   } else {
@@ -723,6 +712,33 @@ export function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE
  * Scuba gear toggled when swimming underwater.
  */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
+  const topKey = character === "girl" ? "adventurer_girl_top" : "adventurer_boy_top";
+  const top = makeImagineGroundDecal(topKey, 0.95, 1.55);
+  if (top) {
+    const g = new THREE.Group();
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.38, 18),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.03;
+    g.add(shadow);
+    top.position.y = 0.14;
+    top.renderOrder = 4;
+    g.add(top);
+    g.userData = {
+      hips: g,
+      shadow,
+      billboard: top,
+      imagineMode: true,
+      spriteLayout: "swim",
+      scubaGear: undefined,
+      landMeshes: [],
+      suitMeshes: [],
+      hasScuba: scuba,
+    };
+    return g;
+  }
 
   const g = new THREE.Group();
   const girl = character === "girl";
@@ -1030,7 +1046,7 @@ export function makeShark(): THREE.Group {
 }
 
 export function makeJelly(): THREE.Group {
-  const img = makeCreatureFromImagine("jelly", 1.2, 1.4, 0.4, "stand");
+  const img = makeCreatureFromImagine("jelly", 1.15, 1.05, 0.4, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("jelly", 0.4);
   if (glb) return glb;
@@ -1107,7 +1123,7 @@ export function makeRay(): THREE.Group {
 }
 
 export function makePelican(): THREE.Group {
-  const img = makeCreatureFromImagine("pelican", 1.55, 1.45, 0.55, "stand");
+  const img = makeCreatureFromImagine("pelican", 1.7, 1.05, 0.55, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("pelican", 0.55);
   if (glb) return glb;
@@ -1167,7 +1183,7 @@ export function makePelican(): THREE.Group {
 }
 
 export function makeGull(): THREE.Group {
-  const img = makeCreatureFromImagine("gull", 1.3, 1.15, 0.4, "stand");
+  const img = makeCreatureFromImagine("gull", 1.45, 0.75, 0.4, "swim");
   if (img) return img;
   const glb = makeCreatureFromGlb("gull", 0.4);
   if (glb) return glb;

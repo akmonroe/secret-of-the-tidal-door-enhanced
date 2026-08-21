@@ -34,6 +34,8 @@ import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.w
 import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.webp";
 import adventurerGirlFaceUrl from "../../assets/imagine/characters/adventurer_girl_face.webp";
 import adventurerBoyFaceUrl from "../../assets/imagine/characters/adventurer_boy_face.webp";
+import adventurerGirlTopUrl from "../../assets/imagine/characters/adventurer_girl_top.webp";
+import adventurerBoyTopUrl from "../../assets/imagine/characters/adventurer_boy_top.webp";
 
 import bubbleUrl from "../../assets/imagine/fx/bubble.webp";
 import ventPlumeUrl from "../../assets/imagine/fx/vent_plume.webp";
@@ -67,6 +69,8 @@ export type ImagineSpriteKey =
   | "adventurer_boy"
   | "adventurer_girl_face"
   | "adventurer_boy_face"
+  | "adventurer_girl_top"
+  | "adventurer_boy_top"
   | "bubble"
   | "vent_plume"
   | "current_arrow";
@@ -100,6 +104,8 @@ const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
   adventurer_boy: adventurerBoyUrl,
   adventurer_girl_face: adventurerGirlFaceUrl,
   adventurer_boy_face: adventurerBoyFaceUrl,
+  adventurer_girl_top: adventurerGirlTopUrl,
+  adventurer_boy_top: adventurerBoyTopUrl,
   bubble: bubbleUrl,
   vent_plume: ventPlumeUrl,
   current_arrow: currentArrowUrl,
@@ -226,6 +232,8 @@ const CHARACTER_KEYS: ImagineSpriteKey[] = [
   "adventurer_boy",
   "adventurer_girl_face",
   "adventurer_boy_face",
+  "adventurer_girl_top",
+  "adventurer_boy_top",
 ];
 
 /** Portraits + face cards so character select / player mesh never wait on fish. */
@@ -311,7 +319,7 @@ export function orientStandSprite(
   vx = 0,
   vz = 0,
 ): void {
-  if (group.userData?.spriteLayout === "swim") return;
+  if (group.userData?.spriteLayout !== "stand") return;
   const billboard = group.userData?.billboard as THREE.Object3D | undefined;
   if (!billboard) return;
 

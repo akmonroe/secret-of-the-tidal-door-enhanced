@@ -429,17 +429,21 @@ export class Player {
 
     if (moving) {
       this.animT += dt * 10;
-      const bob = Math.abs(Math.sin(this.animT)) * 0.08;
-      if (billboard) billboard.position.y = 0.95 + bob;
+      const bob = 1 + Math.abs(Math.sin(this.animT)) * 0.06;
+      if (billboard) {
+        billboard.scale.x = bob;
+        billboard.scale.y = bob;
+      }
     } else if (billboard) {
-      billboard.position.y = 0.95 + Math.sin(this.time * 2) * 0.03;
+      const idle = 1 + Math.sin(this.time * 2) * 0.02;
+      billboard.scale.x = idle;
+      billboard.scale.y = idle;
     }
 
-    // Slight swim tilt
-    const swimTarget = this.inWater ? 1 : 0;
-    this.swimBlend += (swimTarget - this.swimBlend) * Math.min(1, 6 * dt);
+    // Keep the card flat on the water/sand (top-down).
     if (billboard) {
-      billboard.rotation.x = -this.swimBlend * 0.25;
+      billboard.rotation.x = -Math.PI / 2;
+      billboard.position.y = 0.14;
     }
 
     if (shadow) {

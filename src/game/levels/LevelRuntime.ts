@@ -13,7 +13,6 @@ import {
   resolveCollision,
 } from "../world/MazeBuilder";
 import { makeCluePedestal } from "../world/meshes";
-import { orientStandSprite } from "../world/imagineTextures";
 import {
   buildZones,
   type LiveZone,
@@ -48,7 +47,7 @@ export class LevelRuntime {
   private won = false;
   private dead = false;
   private clock = 0;
-  private camOffset = new THREE.Vector3(0, 9.4, 8.6);
+  private camHeight = 36;
   /** Static + dynamic blockers refreshed each frame for animals & player */
   private liveBlockers: Blocker[] = [];
   /** Water surface maps for cheap UV scroll (from makeWater userData). */
@@ -62,8 +61,6 @@ export class LevelRuntime {
   }[] = [];
   /** Mist planes + droplet streaks on the world rim */
   private edgeFx: THREE.Object3D[] = [];
-  /** Vertical art cards (palms, rocks, birds, jellies) that must face the camera */
-  private spriteGroups: THREE.Object3D[] = [];
   /** Throttle “danger edge” hints so they don't spam */
   private edgeWarnAt = 0;
 
@@ -76,16 +73,13 @@ export class LevelRuntime {
     const biome = getBiome(this.def.biome);
     this.scene.clear();
     this.scene.background = new THREE.Color(biome.sky);
-    this.scene.fog = new THREE.Fog(biome.fog, 48, 150);
+    this.scene.fog = new THREE.Fog(biome.fog, 70, 140);
     if (this.envMap) this.scene.environment = this.envMap;
 
-    const sky = makeSkyDome(biome.hemiSky, biome.fog);
-    this.scene.add(sky);
-
-    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 0.95);
+    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 1.15);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff1d0, 2.35);
-    sun.position.set(32, 48, 18);
+    const sun = new THREE.DirectionalLight(0xfff1d0, 2.1);
+    sun.position.set(12, 60, 8);
     sun.castShadow = true;
     const mobile = typeof window !== "undefined" && window.innerWidth < 820;
     const mapSize = mobile ? 1024 : 2048;
@@ -181,13 +175,6 @@ export class LevelRuntime {
     this.clueMesh.position.set(clueAt.x, 0, clueAt.z);
     this.scene.add(this.clueMesh);
 
-    this.spriteGroups = [];
-    this.scene.traverse((obj) => {
-      if (obj.userData?.spriteLayout === "stand" && obj.userData?.billboard) {
-        this.spriteGroups.push(obj);
-      }
-    });
-
     this.won = false;
     this.dead = false;
     this.clock = 0;
@@ -228,38 +215,16 @@ export class LevelRuntime {
     return p;
   }
 
-  update(dt: number, input: Input, camera: THREE.PerspectiveCamera): void {
+  update(dt: number, input: Input, camera: THREE.Camera): void {
     if (this.won) {
-      if (this.player) {
-        camera.position.lerp(
-          new THREE.Vector3(
-            this.player.position.x + this.camOffset.x,
-            this.camOffset.y,
-            this.player.position.z + this.camOffset.z,
-          ),
-          0.08,
-        );
-        camera.lookAt(this.player.position.x, 0.5, this.player.position.z);
-      }
+      if (this.player) this.followTopDown(camera, 0.08);
       return;
     }
 
     // Fall death: keep animating until below the world, then game over
     if (this.dead && this.player?.falling) {
       this.player.update(dt, input, this.maze);
-      camera.position.lerp(
-        new THREE.Vector3(
-          this.player.position.x + this.camOffset.x,
-          this.camOffset.y + 4,
-          this.player.position.z + this.camOffset.z,
-        ),
-        0.06,
-      );
-      camera.lookAt(
-        this.player.position.x,
-        this.player.group.position.y,
-        this.player.position.z,
-      );
+      this.followTopDown(camera, 0.06, 8);
       if (this.player.hasFallenAway()) {
         this.callbacks.onFallDeath();
       }
@@ -386,7 +351,8 @@ export class LevelRuntime {
     if (this.clueMesh) {
       const shell = this.clueMesh.userData.shell as THREE.Mesh | undefined;
       if (shell) {
-        shell.position.y = 0.75 + Math.sin(this.clock * 3) * 0.12;
+        shell.position.y = 0.08 + Math.sin(this.clock * 3) * 0.02;
+        shell.rotation.y += dt * 1.5;
       }
       const dx = this.player.position.x - this.clueMesh.position.x;
       const dz = this.player.position.z - this.clueMesh.position.z;
@@ -395,31 +361,8 @@ export class LevelRuntime {
       }
     }
 
-    const target = new THREE.Vector3(
-      this.player.position.x + this.camOffset.x,
-      this.camOffset.y,
-      this.player.position.z + this.camOffset.z,
-    );
-    camera.position.lerp(target, 1 - Math.exp(-5 * dt));
-    camera.lookAt(this.player.position.x, 0.5, this.player.position.z);
+    this.followTopDown(camera, 1 - Math.exp(-5 * dt));
     camera.updateMatrixWorld();
-
-    for (const g of this.spriteGroups) {
-      orientStandSprite(
-        g,
-        camera,
-        (g.userData.vx as number) ?? 0,
-        (g.userData.vz as number) ?? 0,
-      );
-    }
-    if (this.clueMesh) {
-      const shell = this.clueMesh.userData.shell as THREE.Object3D | undefined;
-      if (shell) {
-        const dx = camera.position.x - this.clueMesh.position.x;
-        const dz = camera.position.z - this.clueMesh.position.z;
-        shell.rotation.y = Math.atan2(dx, dz);
-      }
-    }
 
     this.callbacks.onHud(
       this.player.hp,
@@ -427,6 +370,19 @@ export class LevelRuntime {
       this.def.objective,
       getSave().clues.length,
     );
+  }
+
+  /**
+   * Pure overhead follow: camera sits on +Y, screen-up is world −Z (W walks up).
+   */
+  private followTopDown(camera: THREE.Camera, _lerp: number, extraY = 0): void {
+    if (!this.player) return;
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const y = this.camHeight + extraY;
+    camera.up.set(0, 0, -1);
+    camera.position.set(px, y, pz);
+    camera.rotation.set(-Math.PI / 2, 0, 0);
   }
 
   /** Test helper: stand the traveler just behind an animal so we can see it. */
@@ -476,38 +432,4 @@ export class LevelRuntime {
     this.edgeFx = [];
     this.scene.clear();
   }
-}
-
-function makeSkyDome(top: number, bot: number): THREE.Mesh {
-  const geo = new THREE.SphereGeometry(170, 24, 16);
-  const mat = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    fog: false,
-    depthWrite: false,
-    uniforms: {
-      topColor: { value: new THREE.Color(top) },
-      botColor: { value: new THREE.Color(bot) },
-    },
-    vertexShader: `
-      varying float vH;
-      void main() {
-        vec4 w = modelMatrix * vec4(position, 1.0);
-        vH = normalize(position).y;
-        gl_Position = projectionMatrix * viewMatrix * w;
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 topColor;
-      uniform vec3 botColor;
-      varying float vH;
-      void main() {
-        float h = clamp(vH * 0.72 + 0.38, 0.0, 1.0);
-        vec3 col = mix(botColor, topColor, pow(h, 0.85));
-        gl_FragColor = vec4(col, 1.0);
-      }
-    `,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.frustumCulled = false;
-  return mesh;
 }

@@ -12,7 +12,9 @@ type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 
 export class GameApp {
   private renderer: THREE.WebGLRenderer;
-  private camera: THREE.PerspectiveCamera;
+  private camera: THREE.OrthographicCamera;
+  /** World units visible vertically — pure top-down map. */
+  private viewHeight = 22;
   private input = new Input();
   private ui: GameUI;
   private mode: Mode = "menu";
@@ -47,13 +49,16 @@ export class GameApp {
     this.renderer.toneMappingExposure = 1.12;
     container.appendChild(this.renderer.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(
-      42,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      250,
-    );
-    this.camera.position.set(0, 14, 12);
+    const aspect =
+      typeof window !== "undefined" && window.innerHeight > 0
+        ? window.innerWidth / window.innerHeight
+        : 16 / 9;
+    const vh = this.viewHeight;
+    const vw = vh * aspect;
+    this.camera = new THREE.OrthographicCamera(-vw / 2, vw / 2, vh / 2, -vh / 2, 0.1, 80);
+    this.camera.up.set(0, 0, -1);
+    this.camera.position.set(0, 36, 0);
+    this.camera.rotation.set(-Math.PI / 2, 0, 0);
 
     try {
       const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -152,7 +157,13 @@ export class GameApp {
   private onResize = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    this.camera.aspect = w / h;
+    const aspect = h > 0 ? w / h : 16 / 9;
+    const vh = this.viewHeight;
+    const vw = vh * aspect;
+    this.camera.left = -vw / 2;
+    this.camera.right = vw / 2;
+    this.camera.top = vh / 2;
+    this.camera.bottom = -vh / 2;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
   };
