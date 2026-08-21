@@ -18,6 +18,7 @@ import {
 } from "./textures";
 import {
   makeImagineBillboard,
+  tryImagineSprite,
   type ImagineSpriteKey,
 } from "./imagineTextures";
 import { cloneModel3d, type Model3dKey } from "./model3d";
@@ -30,6 +31,30 @@ const toon = (color: number, opts?: { transparent?: boolean; opacity?: number })
     roughness: 0.62,
     metalness: 0.06,
     envMapIntensity: 0.85,
+  });
+
+const skinMat = (hex: number) =>
+  new THREE.MeshStandardMaterial({
+    color: hex,
+    roughness: 0.48,
+    metalness: 0.02,
+    envMapIntensity: 0.55,
+  });
+
+const clothMat = (hex: number) =>
+  new THREE.MeshStandardMaterial({
+    color: hex,
+    roughness: 0.84,
+    metalness: 0,
+    envMapIntensity: 0.38,
+  });
+
+const hairMat = (hex: number) =>
+  new THREE.MeshStandardMaterial({
+    color: hex,
+    roughness: 0.68,
+    metalness: 0.02,
+    envMapIntensity: 0.32,
   });
 
 function darken(hex: number, factor: number): number {
@@ -68,6 +93,23 @@ export type GroundStyle =
   | "grate"
   | "ice"
   | "basalt";
+
+/** Isolated Imagine prop as a vertical card — used when the 3D kit would look toy-like. */
+function tryPropBillboard(
+  key: ImagineSpriteKey,
+  width: number,
+  height: number,
+): THREE.Group | null {
+  const billboard = makeImagineBillboard(key, width, height);
+  if (!billboard) return null;
+  const g = new THREE.Group();
+  billboard.position.y = height * 0.5;
+  billboard.castShadow = true;
+  g.add(billboard);
+  g.userData.imagineMode = true;
+  g.userData.billboard = billboard;
+  return g;
+}
 
 export function makeGround(
   size: number,
@@ -183,6 +225,8 @@ export function makeFloorTile(
 }
 
 export function makeRock(color = 0xb8b0a8): THREE.Group {
+  const img = tryPropBillboard("rock", 1.25, 0.95);
+  if (img) return img;
   const g = new THREE.Group();
   // Soft pastel rock pile — toy stone, not granite grey
   const main = color;
@@ -207,6 +251,8 @@ export function makeRock(color = 0xb8b0a8): THREE.Group {
 }
 
 export function makePalm(): THREE.Group {
+  const img = tryPropBillboard("palm", 1.55, 2.55);
+  if (img) return img;
   const g = new THREE.Group();
   // Candy-brown trunk with ring bands
   const trunk = new THREE.Mesh(
@@ -252,6 +298,8 @@ export function makePalm(): THREE.Group {
 }
 
 export function makeCrate(): THREE.Group {
+  const img = tryPropBillboard("crate", 1.05, 0.95);
+  if (img) return img;
   const g = new THREE.Group();
   const map = mapForMesh(crateTexture(), 1, 1);
   const box = new THREE.Mesh(
@@ -376,18 +424,29 @@ export function makeCluePedestal(): THREE.Group {
   );
   base.position.y = 0.2;
   g.add(base);
-  // Pearl shell — saturated gold
-  const shell = new THREE.Mesh(
-    new THREE.SphereGeometry(0.35, 12, 10),
-    new THREE.MeshToonMaterial({
-      color: 0xffe066,
-      emissive: 0xffaa33,
-      emissiveIntensity: 0.25,
-    }),
-  );
-  shell.scale.set(1, 0.7, 1.1);
-  shell.position.y = 0.75;
-  g.add(shell);
+  // Pearl shell — saturated gold, or Imagine conch
+  const shellBill = makeImagineBillboard("clue_shell", 0.78, 0.62);
+  let shell: THREE.Object3D;
+  if (shellBill) {
+    shellBill.position.y = 0.88;
+    g.add(shellBill);
+    shell = shellBill;
+  } else {
+    const shellMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 12, 10),
+      new THREE.MeshStandardMaterial({
+        color: 0xffe066,
+        emissive: 0xffaa33,
+        emissiveIntensity: 0.25,
+        roughness: 0.35,
+        metalness: 0.15,
+      }),
+    );
+    shellMesh.scale.set(1, 0.7, 1.1);
+    shellMesh.position.y = 0.75;
+    g.add(shellMesh);
+    shell = shellMesh;
+  }
   // Accent ring
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(0.38, 0.04, 6, 16),
@@ -657,24 +716,25 @@ function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE.Group 
 }
 
 /**
- * 3D kid adventurer — prefers Blender GLB with Imagine textures; falls back to
- * procedural limbs + optional face card. Scuba gear toggled when swimming underwater.
+ * 3D kid adventurer — procedural humanoid with a photorealistic face card.
+ * The Blender GLB path wrapped a 2D painting onto a lumpy mesh (the "squid").
+ * Scuba gear toggled when swimming underwater.
  */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
-  const fromGlb = makePlayerFromGlb(character, scuba);
-  if (fromGlb) return fromGlb;
 
   const g = new THREE.Group();
-  // Land palette (walk) vs wetsuit (scuba swim) — materials swap visibility
-  const skin = character === "girl" ? 0xf0c090 : 0xdf9a58;
-  const hair = character === "girl" ? 0x6b3a28 : 0x2a2018;
-  const shirtLand = character === "girl" ? 0xff6b4a : 0x2ecf9a;
-  const pantsLand = character === "girl" ? 0xffb347 : 0x3d7acc;
+  const girl = character === "girl";
+  // Palette matches the photorealistic portraits
+  const skin = girl ? 0xc68654 : 0xe0a070;
+  const hair = girl ? 0x1c120e : 0x2a1c14;
+  const shirtLand = girl ? 0xe24b3a : 0x2a9d8f;
+  const pantsLand = girl ? 0xc4a56a : 0x3d5a80;
+  const shoeCol = girl ? 0xd45a62 : 0x243044;
   const suit = 0x1e4d8c;
   const suitDark = 0x163a6b;
 
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.48, 16),
+    new THREE.CircleGeometry(0.42, 20),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 }),
   );
   shadow.rotation.x = -Math.PI / 2;
@@ -687,117 +747,154 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
 
   // --- Body ---
   const torsoLand = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.3, 0.38, 5, 10),
-    toon(shirtLand),
+    new THREE.CapsuleGeometry(0.22, 0.36, 8, 16),
+    clothMat(shirtLand),
   );
-  torsoLand.position.y = 0.36;
+  torsoLand.scale.set(1.18, 1, 0.72);
+  torsoLand.position.y = 0.38;
   torsoLand.castShadow = true;
   hips.add(torsoLand);
 
   const torsoSuit = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.31, 0.38, 5, 10),
-    toon(suit),
+    new THREE.CapsuleGeometry(0.23, 0.36, 8, 16),
+    clothMat(suit),
   );
-  torsoSuit.position.y = 0.36;
+  torsoSuit.scale.set(1.18, 1, 0.72);
+  torsoSuit.position.y = 0.38;
   torsoSuit.castShadow = true;
   torsoSuit.visible = false;
   hips.add(torsoSuit);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 12), toon(skin));
-  head.position.y = 0.88;
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.08, 0.12, 12),
+    skinMat(skin),
+  );
+  neck.position.y = 0.72;
+  hips.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 18), skinMat(skin));
+  head.scale.set(0.98, 1.16, 0.92);
+  head.position.y = 0.92;
   head.castShadow = true;
   hips.add(head);
 
-  // Imagine face card (soft-realism portrait) on the front of the head
-  const faceKey: ImagineSpriteKey =
-    character === "girl" ? "adventurer_girl" : "adventurer_boy";
-  const faceBillboard = makeImagineBillboard(faceKey, 0.62, 0.72);
-  if (faceBillboard) {
-    faceBillboard.position.set(0, 0.88, 0.22);
-    faceBillboard.scale.setScalar(1);
-    // Plane already centered; pull slightly out from head
-    hips.add(faceBillboard);
-    g.userData.faceCard = faceBillboard;
+  for (const sx of [-1, 1] as const) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skinMat(skin));
+    ear.scale.set(0.55, 1, 0.8);
+    ear.position.set(sx * 0.23, 0.9, 0.02);
+    hips.add(ear);
+  }
+
+  // Photorealistic face wrapped on the front of the head (not the full-body sprite)
+  const faceKey: ImagineSpriteKey = girl
+    ? "adventurer_girl_face"
+    : "adventurer_boy_face";
+  const faceMap = tryImagineSprite(faceKey);
+  if (faceMap) {
+    const faceMat = new THREE.MeshStandardMaterial({
+      map: faceMap,
+      transparent: true,
+      alphaTest: 0.16,
+      roughness: 0.48,
+      metalness: 0,
+      envMapIntensity: 0.28,
+      depthWrite: true,
+    });
+    const faceCard = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.48), faceMat);
+    faceCard.position.set(0, 0.94, 0.23);
+    hips.add(faceCard);
+    g.userData.faceCard = faceCard;
   } else {
-    // Fallback eyes / smile so the 3D kid still reads without Imagine
     for (const sx of [-1, 1] as const) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), toon(0x1a1a1a));
-      eye.position.set(sx * 0.1, 0.92, 0.26);
-      hips.add(eye);
-      const white = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), toon(0xffffff));
-      white.position.set(sx * 0.1, 0.92, 0.24);
+      const white = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), toon(0xffffff));
+      white.position.set(sx * 0.08, 0.95, 0.2);
       hips.add(white);
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 6), toon(0x1a120c));
+      eye.position.set(sx * 0.08, 0.95, 0.24);
+      hips.add(eye);
     }
     const smile = new THREE.Mesh(
-      new THREE.TorusGeometry(0.08, 0.018, 6, 12, Math.PI),
-      toon(0xc45c4a),
+      new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI),
+      toon(0xb85a48),
     );
-    smile.position.set(0, 0.8, 0.27);
+    smile.position.set(0, 0.82, 0.21);
     smile.rotation.x = Math.PI;
     hips.add(smile);
   }
 
+  // Hair volume on top/back so the high camera reads a person, not a bald sphere
   const hairMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(character === "girl" ? 0.32 : 0.3, 12, 10),
-    toon(hair),
+    new THREE.SphereGeometry(girl ? 0.26 : 0.245, 16, 12),
+    hairMat(hair),
   );
-  hairMesh.scale.set(1.08, character === "girl" ? 0.88 : 0.62, 1.05);
-  hairMesh.position.y = character === "girl" ? 0.98 : 1.02;
+  hairMesh.scale.set(1.12, girl ? 0.78 : 0.55, 1.15);
+  hairMesh.position.set(0, girl ? 1.05 : 1.08, -0.04);
+  hairMesh.castShadow = true;
   hips.add(hairMesh);
 
-  if (character === "girl") {
-    const braid = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.28, 3, 6), toon(hair));
-    braid.position.set(0.24, 0.78, -0.06);
-    braid.rotation.z = -0.45;
-    hips.add(braid);
+  if (girl) {
+    const pony = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.34, 6, 10), hairMat(hair));
+    pony.position.set(0, 0.88, -0.22);
+    pony.rotation.x = 0.55;
+    hips.add(pony);
+    const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 6, 10), clothMat(0xe24b3a));
+    ribbon.position.set(0, 1.08, -0.16);
+    ribbon.rotation.x = Math.PI / 2;
+    hips.add(ribbon);
   }
 
   // Legs — land pants vs suit
-  const legGeo = new THREE.CapsuleGeometry(0.11, 0.3, 4, 8);
+  const legGeo = new THREE.CapsuleGeometry(0.09, 0.32, 6, 12);
   const legL = new THREE.Group();
-  legL.position.set(-0.13, 0.05, 0);
-  const legLLand = new THREE.Mesh(legGeo, toon(pantsLand));
+  legL.position.set(-0.12, 0.04, 0);
+  const legLLand = new THREE.Mesh(legGeo, clothMat(pantsLand));
   legLLand.position.y = -0.3;
   legLLand.castShadow = true;
   legL.add(legLLand);
-  const legLSuit = new THREE.Mesh(legGeo, toon(suitDark));
+  const legLSuit = new THREE.Mesh(legGeo, clothMat(suitDark));
   legLSuit.position.y = -0.3;
   legLSuit.visible = false;
   legL.add(legLSuit);
 
   const legR = new THREE.Group();
-  legR.position.set(0.13, 0.05, 0);
-  const legRLand = new THREE.Mesh(legGeo, toon(pantsLand));
+  legR.position.set(0.12, 0.04, 0);
+  const legRLand = new THREE.Mesh(legGeo, clothMat(pantsLand));
   legRLand.position.y = -0.3;
   legRLand.castShadow = true;
   legR.add(legRLand);
-  const legRSuit = new THREE.Mesh(legGeo, toon(suitDark));
+  const legRSuit = new THREE.Mesh(legGeo, clothMat(suitDark));
   legRSuit.position.y = -0.3;
   legRSuit.visible = false;
   legR.add(legRSuit);
   hips.add(legL, legR);
 
   // Arms
-  const armGeo = new THREE.CapsuleGeometry(0.085, 0.3, 4, 8);
+  const armGeo = new THREE.CapsuleGeometry(0.07, 0.28, 6, 12);
   const armL = new THREE.Group();
-  armL.position.set(-0.36, 0.5, 0);
-  const armLMesh = new THREE.Mesh(armGeo, toon(skin));
-  armLMesh.position.y = -0.24;
+  armL.position.set(-0.32, 0.52, 0);
+  const armLMesh = new THREE.Mesh(armGeo, skinMat(skin));
+  armLMesh.position.y = -0.22;
   armL.add(armLMesh);
-  const armLSuit = new THREE.Mesh(armGeo, toon(suit));
-  armLSuit.position.y = -0.24;
+  const armLSuit = new THREE.Mesh(armGeo, clothMat(suit));
+  armLSuit.position.y = -0.22;
   armLSuit.visible = false;
   armL.add(armLSuit);
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skinMat(skin));
+  handL.position.y = -0.4;
+  armL.add(handL);
 
   const armR = new THREE.Group();
-  armR.position.set(0.36, 0.5, 0);
-  const armRMesh = new THREE.Mesh(armGeo, toon(skin));
-  armRMesh.position.y = -0.24;
+  armR.position.set(0.32, 0.52, 0);
+  const armRMesh = new THREE.Mesh(armGeo, skinMat(skin));
+  armRMesh.position.y = -0.22;
   armR.add(armRMesh);
-  const armRSuit = new THREE.Mesh(armGeo, toon(suit));
-  armRSuit.position.y = -0.24;
+  const armRSuit = new THREE.Mesh(armGeo, clothMat(suit));
+  armRSuit.position.y = -0.22;
   armRSuit.visible = false;
   armR.add(armRSuit);
+  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), skinMat(skin));
+  handR.position.y = -0.4;
+  armR.add(handR);
   hips.add(armL, armR);
 
   // --- Scuba gear (shown only when swimming with scuba unlocked) ---
@@ -808,10 +905,11 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
   const shoes: THREE.Mesh[] = [];
   for (const sx of [-1, 1] as const) {
     const shoe = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.08, 0.24),
-      toon(character === "girl" ? 0xff6688 : 0x334455),
+      new THREE.BoxGeometry(0.15, 0.07, 0.26),
+      clothMat(shoeCol),
     );
-    shoe.position.set(sx * 0.13, -0.48, 0.04);
+    shoe.position.set(sx * 0.12, -0.48, 0.04);
+    shoe.castShadow = true;
     hips.add(shoe);
     shoes.push(shoe);
   }
@@ -878,10 +976,10 @@ function makeCreatureFromImagine(
  * (`atan2(vx, vz)`) matches movement — same convention as the player.
  */
 export function makeShark(): THREE.Group {
-  const glb = makeCreatureFromGlb("shark", 0.65);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("shark", 1.7, 1.1, 0.65);
   if (img) return img;
+  const glb = makeCreatureFromGlb("shark", 0.65);
+  if (glb) return glb;
   const g = new THREE.Group();
   // Cone tip was +Y; rotate to +Z (nose forward) — slate-blue toy shark
   const body = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.55, 6), toon(0x6a8aa0));
@@ -923,10 +1021,10 @@ export function makeShark(): THREE.Group {
 }
 
 export function makeJelly(): THREE.Group {
-  const glb = makeCreatureFromGlb("jelly", 0.4);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("jelly", 1.2, 1.4, 0.4);
   if (img) return img;
+  const glb = makeCreatureFromGlb("jelly", 0.4);
+  if (glb) return glb;
   const g = new THREE.Group();
   const bell = new THREE.Mesh(
     new THREE.SphereGeometry(0.4, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2),
@@ -963,10 +1061,10 @@ export function makeJelly(): THREE.Group {
 }
 
 export function makeRay(): THREE.Group {
-  const glb = makeCreatureFromGlb("ray", 0.7);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("ray", 1.8, 1.0, 0.7);
   if (img) return img;
+  const glb = makeCreatureFromGlb("ray", 0.7);
+  if (glb) return glb;
   const g = new THREE.Group();
   // Flat diamond body — wider on X so facing (+Z) is obvious from above
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6), toon(0x4a5560));
@@ -1000,10 +1098,10 @@ export function makeRay(): THREE.Group {
 }
 
 export function makePelican(): THREE.Group {
-  const glb = makeCreatureFromGlb("pelican", 0.55);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("pelican", 1.6, 1.5, 0.55);
   if (img) return img;
+  const glb = makeCreatureFromGlb("pelican", 0.55);
+  if (glb) return glb;
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), toon(0xfff8ee));
   body.scale.set(1.15, 0.9, 1.2);
@@ -1060,10 +1158,10 @@ export function makePelican(): THREE.Group {
 }
 
 export function makeGull(): THREE.Group {
-  const glb = makeCreatureFromGlb("gull", 0.4);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("gull", 1.3, 1.15, 0.4);
   if (img) return img;
+  const glb = makeCreatureFromGlb("gull", 0.4);
+  if (glb) return glb;
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), toon(0xffffff));
   body.scale.set(1, 0.95, 1.15);
@@ -1111,10 +1209,10 @@ export function makeGull(): THREE.Group {
 
 /** Barrel-bodied sea lion for kelp lanes */
 export function makeSeaLion(): THREE.Group {
-  const glb = makeCreatureFromGlb("sealion", 0.55);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("sealion", 1.6, 1.2, 0.55);
   if (img) return img;
+  const glb = makeCreatureFromGlb("sealion", 0.55);
+  if (glb) return glb;
   // Chocolate toy seal — warmer than ray/shark slate so it pops on kelp green
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 7), toon(0x6a5040));
@@ -1157,10 +1255,10 @@ export function makeSeaLion(): THREE.Group {
 
 /** Deep anglerfish — lethal boss silhouette with glowing lure (toy, not horror) */
 export function makeAngler(): THREE.Group {
-  const glb = makeCreatureFromGlb("angler", 0.65);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("angler", 1.7, 1.6, 0.65);
   if (img) return img;
+  const glb = makeCreatureFromGlb("angler", 0.65);
+  if (glb) return glb;
   const g = new THREE.Group();
   // Plum body — brighter than pure night so it reads on vent/storm floors
   const body = new THREE.Mesh(new THREE.SphereGeometry(0.48, 10, 8), toon(0x5a3878));
@@ -1228,10 +1326,10 @@ export function makeAngler(): THREE.Group {
 
 /** Fast silver marlin — lethal spear fish for current raceway / late seas */
 export function makeMarlin(): THREE.Group {
-  const glb = makeCreatureFromGlb("marlin", 0.7);
-  if (glb) return glb;
   const img = makeCreatureFromImagine("marlin", 2.0, 1.15, 0.7);
   if (img) return img;
+  const glb = makeCreatureFromGlb("marlin", 0.7);
+  if (glb) return glb;
   const g = new THREE.Group();
   // Steel-blue body — brighter than shark slate for raceway contrast
   const body = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.9, 7), toon(0x70b0d0));

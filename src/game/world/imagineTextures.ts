@@ -32,6 +32,8 @@ import rockUrl from "../../assets/imagine/props/rock.webp";
 
 import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.webp";
 import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.webp";
+import adventurerGirlFaceUrl from "../../assets/imagine/characters/adventurer_girl_face.webp";
+import adventurerBoyFaceUrl from "../../assets/imagine/characters/adventurer_boy_face.webp";
 
 import bubbleUrl from "../../assets/imagine/fx/bubble.webp";
 import ventPlumeUrl from "../../assets/imagine/fx/vent_plume.webp";
@@ -63,6 +65,8 @@ export type ImagineSpriteKey =
   | "rock"
   | "adventurer_girl"
   | "adventurer_boy"
+  | "adventurer_girl_face"
+  | "adventurer_boy_face"
   | "bubble"
   | "vent_plume"
   | "current_arrow";
@@ -94,6 +98,8 @@ const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
   rock: rockUrl,
   adventurer_girl: adventurerGirlUrl,
   adventurer_boy: adventurerBoyUrl,
+  adventurer_girl_face: adventurerGirlFaceUrl,
+  adventurer_boy_face: adventurerBoyFaceUrl,
   bubble: bubbleUrl,
   vent_plume: ventPlumeUrl,
   current_arrow: currentArrowUrl,
@@ -213,6 +219,21 @@ function loadImage(url: string): Promise<void> {
 export function preloadImagineTiles(): Promise<void> {
   if (!USE_IMAGINE_ASSETS) return Promise.resolve();
   return Promise.all(Object.values(TILE_URLS).map(loadImage)).then(() => undefined);
+}
+
+const CHARACTER_KEYS: ImagineSpriteKey[] = [
+  "adventurer_girl",
+  "adventurer_boy",
+  "adventurer_girl_face",
+  "adventurer_boy_face",
+];
+
+/** Portraits + face cards so character select / player mesh never wait on fish. */
+export function preloadImagineCharacters(): Promise<void> {
+  if (!USE_IMAGINE_ASSETS) return Promise.resolve();
+  return Promise.all(CHARACTER_KEYS.map((k) => loadImage(SPRITE_URLS[k]))).then(
+    () => undefined,
+  );
 }
 
 /** Optional: sprites for billboards / FX. Safe to run in the background. */

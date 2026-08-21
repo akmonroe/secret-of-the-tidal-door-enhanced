@@ -103,12 +103,12 @@ export class GameUI {
           <button class="char-card" data-id="girl">
             <div class="char-preview girl" style="background-image:url('${girlImg}')"></div>
             <span>Girl</span>
-            <small>Soft-realism adventurer</small>
+            <small>Beach explorer</small>
           </button>
           <button class="char-card" data-id="boy">
             <div class="char-preview boy" style="background-image:url('${boyImg}')"></div>
             <span>Boy</span>
-            <small>Soft-realism adventurer</small>
+            <small>Beach explorer</small>
           </button>
         </div>
         <button class="btn primary" id="btn-char-go" disabled>Continue</button>

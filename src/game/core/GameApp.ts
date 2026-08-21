@@ -5,8 +5,8 @@ import { GameUI } from "../ui-dom/ui";
 import { LevelRuntime } from "../levels/LevelRuntime";
 import { getLevel, getNextLevel, totalLevelsBuilt } from "../levels/levelDefs";
 import { resetProgress, setScuba, type CharacterId } from "../progress/state";
-import { preloadImagineSprites, preloadImagineTiles } from "../world/imagineTextures";
-import { preloadCoreModels3d, preloadModels3d } from "../world/model3d";
+import { preloadImagineCharacters, preloadImagineSprites, preloadImagineTiles } from "../world/imagineTextures";
+import { preloadModels3d } from "../world/model3d";
 
 type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 
@@ -25,7 +25,7 @@ export class GameApp {
   private fallReported = false;
   private envMap: THREE.Texture | null = null;
   private raf = 0;
-  /** Tiles + player GLBs — enough to start level 1. */
+  /** Tiles + player portraits — enough to start level 1. */
   private assetsReady: Promise<void>;
 
   constructor(container: HTMLElement) {
@@ -36,6 +36,7 @@ export class GameApp {
       antialias: !mobile,
       powerPreference: "high-performance",
       alpha: false,
+      preserveDrawingBuffer: true,
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.25 : 1.75));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -78,7 +79,7 @@ export class GameApp {
     this.input.setGameplayVisible(false);
     this.assetsReady = Promise.all([
       preloadImagineTiles(),
-      preloadCoreModels3d(),
+      preloadImagineCharacters(),
     ]).then(() => undefined);
     // Background: rest of GLBs + sprites while the menu is up
     void this.assetsReady.then(() => {
@@ -188,7 +189,7 @@ export class GameApp {
       this.showMenu();
       return;
     }
-    // Ensure GLBs are in cache so makeShark / makePlayerCharacter prefer them
+    // Tiles + portraits are in cache so the first maze and player paint immediately
     await this.assetsReady;
 
     this.pendingLevelId = id;
@@ -201,15 +202,21 @@ export class GameApp {
     this.ui.showHud();
     this.input.setGameplayVisible(true);
 
-    this.level = new LevelRuntime(def, {
-      onHud: (hp, max, obj, clues) => this.ui.updateHud(hp, max, obj, clues),
-      onHint: (t) => this.ui.showHint(t),
-      onComplete: (clueId, clueText) => this.onLevelComplete(clueId, clueText),
-      onDeath: () => this.onHpDeath(),
-      onFallDeath: () => this.onFallGameOver(),
-    });
-    this.level.envMap = this.envMap;
-    this.level.start();
+    try {
+      this.level = new LevelRuntime(def, {
+        onHud: (hp, max, obj, clues) => this.ui.updateHud(hp, max, obj, clues),
+        onHint: (t) => this.ui.showHint(t),
+        onComplete: (clueId, clueText) => this.onLevelComplete(clueId, clueText),
+        onDeath: () => this.onHpDeath(),
+        onFallDeath: () => this.onFallGameOver(),
+      });
+      this.level.envMap = this.envMap;
+      this.level.start();
+    } catch (err) {
+      console.error("[startLevel]", err);
+      this.ui.showHint("Level failed to start");
+      this.showMenu();
+    }
   }
 
   private onLevelComplete(clueId: string, clueText: string): void {

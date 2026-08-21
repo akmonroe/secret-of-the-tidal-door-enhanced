@@ -47,7 +47,7 @@ export class LevelRuntime {
   private won = false;
   private dead = false;
   private clock = 0;
-  private camOffset = new THREE.Vector3(0, 12, 10);
+  private camOffset = new THREE.Vector3(0, 9.4, 8.6);
   /** Static + dynamic blockers refreshed each frame for animals & player */
   private liveBlockers: Blocker[] = [];
   /** Water surface maps for cheap UV scroll (from makeWater userData). */
