@@ -150,4 +150,10 @@ export class Input {
   setDodgeReady(ready: boolean): void {
     this.dodgeBtn.classList.toggle("cooldown", !ready);
   }
+
+  dispose(): void {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
+    this.root?.remove();
+  }
 }

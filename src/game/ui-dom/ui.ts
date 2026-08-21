@@ -88,11 +88,11 @@ export class GameUI {
     this.hideHud();
     // Use Imagine portraits when the enhanced pack is present
     const girlImg = new URL(
-      "../../assets/imagine/characters/adventurer_girl.png",
+      "../../assets/imagine/characters/adventurer_girl.webp",
       import.meta.url,
     ).href;
     const boyImg = new URL(
-      "../../assets/imagine/characters/adventurer_boy.png",
+      "../../assets/imagine/characters/adventurer_boy.webp",
       import.meta.url,
     ).href;
     this.root.innerHTML = `
@@ -231,6 +231,13 @@ export class GameUI {
     window.setTimeout(() => {
       this.hintEl.style.opacity = "0";
     }, 4000);
+  }
+
+  dispose(): void {
+    this.root.remove();
+    this.hudEl.remove();
+    this.hintEl.remove();
+    this.compassEl.remove();
   }
 }
 

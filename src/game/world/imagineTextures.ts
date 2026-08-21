@@ -1,49 +1,42 @@
 /**
  * Grok Imagine asset loader for the enhanced Tidal Door fork.
  *
- * When USE_IMAGINE_ASSETS is true and a PNG exists under src/assets/imagine/,
- * these loaders return THREE textures. Callers fall back to procedural canvas
- * textures in textures.ts when a key is missing or the flag is off.
- *
- * Toggle at runtime:
- *   localStorage.setItem("useImagineAssets", "0")  // force procedural
- *   localStorage.setItem("useImagineAssets", "1")  // force imagine (default)
+ * Assets are hashed WebP URLs. Tiles preload first (needed for the maze);
+ * sprites load on demand so boot is not blocked by creature/prop art.
  */
 import * as THREE from "three";
 
-// ─── Vite URL imports (build fails only if a listed file is deleted) ─
-import sandUrl from "../../assets/imagine/tiles/sand.png";
-import waterSurfaceUrl from "../../assets/imagine/tiles/water_surface.png";
-import seafloorUrl from "../../assets/imagine/tiles/seafloor.png";
-import woodPlankUrl from "../../assets/imagine/tiles/wood_plank.png";
-import iceUrl from "../../assets/imagine/tiles/ice.png";
-import rockWallUrl from "../../assets/imagine/tiles/rock_wall.png";
-import coralWallUrl from "../../assets/imagine/tiles/coral_wall.png";
-import basaltVentUrl from "../../assets/imagine/tiles/basalt_vent.png";
+import sandUrl from "../../assets/imagine/tiles/sand.webp";
+import waterSurfaceUrl from "../../assets/imagine/tiles/water_surface.webp";
+import seafloorUrl from "../../assets/imagine/tiles/seafloor.webp";
+import woodPlankUrl from "../../assets/imagine/tiles/wood_plank.webp";
+import iceUrl from "../../assets/imagine/tiles/ice.webp";
+import rockWallUrl from "../../assets/imagine/tiles/rock_wall.webp";
+import coralWallUrl from "../../assets/imagine/tiles/coral_wall.webp";
+import basaltVentUrl from "../../assets/imagine/tiles/basalt_vent.webp";
 
-import sharkUrl from "../../assets/imagine/creatures/shark.png";
-import jellyUrl from "../../assets/imagine/creatures/jelly.png";
-import rayUrl from "../../assets/imagine/creatures/ray.png";
-import sealionUrl from "../../assets/imagine/creatures/sealion.png";
-import anglerUrl from "../../assets/imagine/creatures/angler.png";
-import marlinUrl from "../../assets/imagine/creatures/marlin.png";
-import pelicanUrl from "../../assets/imagine/creatures/pelican.png";
-import gullUrl from "../../assets/imagine/creatures/gull.png";
+import sharkUrl from "../../assets/imagine/creatures/shark.webp";
+import jellyUrl from "../../assets/imagine/creatures/jelly.webp";
+import rayUrl from "../../assets/imagine/creatures/ray.webp";
+import sealionUrl from "../../assets/imagine/creatures/sealion.webp";
+import anglerUrl from "../../assets/imagine/creatures/angler.webp";
+import marlinUrl from "../../assets/imagine/creatures/marlin.webp";
+import pelicanUrl from "../../assets/imagine/creatures/pelican.webp";
+import gullUrl from "../../assets/imagine/creatures/gull.webp";
 
-import palmUrl from "../../assets/imagine/props/palm.png";
-import stiltHouseUrl from "../../assets/imagine/props/stilt_house.png";
-import crateUrl from "../../assets/imagine/props/crate.png";
-import clueShellUrl from "../../assets/imagine/props/clue_shell.png";
-import rockUrl from "../../assets/imagine/props/rock.png";
+import palmUrl from "../../assets/imagine/props/palm.webp";
+import stiltHouseUrl from "../../assets/imagine/props/stilt_house.webp";
+import crateUrl from "../../assets/imagine/props/crate.webp";
+import clueShellUrl from "../../assets/imagine/props/clue_shell.webp";
+import rockUrl from "../../assets/imagine/props/rock.webp";
 
-import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.png";
-import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.png";
+import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.webp";
+import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.webp";
 
-import bubbleUrl from "../../assets/imagine/fx/bubble.png";
-import ventPlumeUrl from "../../assets/imagine/fx/vent_plume.png";
-import currentArrowUrl from "../../assets/imagine/fx/current_arrow.png";
+import bubbleUrl from "../../assets/imagine/fx/bubble.webp";
+import ventPlumeUrl from "../../assets/imagine/fx/vent_plume.webp";
+import currentArrowUrl from "../../assets/imagine/fx/current_arrow.webp";
 
-/** Tile keys used by textures.ts / meshes.ts */
 export type ImagineTileKey =
   | "sand"
   | "water_surface"
@@ -54,7 +47,6 @@ export type ImagineTileKey =
   | "coral_wall"
   | "basalt_vent";
 
-/** Isolated sprite keys (alpha already keyed from magenta). */
 export type ImagineSpriteKey =
   | "shark"
   | "jelly"
@@ -116,11 +108,9 @@ function readFlag(): boolean {
   } catch {
     /* private mode */
   }
-  // Enhanced fork defaults ON
   return true;
 }
 
-/** Feature flag — default true in this fork. */
 export let USE_IMAGINE_ASSETS = readFlag();
 
 export function setUseImagineAssets(on: boolean): void {
@@ -130,16 +120,15 @@ export function setUseImagineAssets(on: boolean): void {
   } catch {
     /* ignore */
   }
-  // Clear caches so next request rebuilds
   tileCache.clear();
   spriteCache.clear();
 }
 
 const tileCache = new Map<string, THREE.Texture>();
 const spriteCache = new Map<string, THREE.Texture>();
-/** Decoded HTML images after preload (enables sync Texture construction). */
 const htmlImages = new Map<string, HTMLImageElement>();
 const loader = new THREE.TextureLoader();
+const MAX_ANISO = 8;
 
 function configureTile(tex: THREE.Texture): THREE.Texture {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -147,6 +136,7 @@ function configureTile(tex: THREE.Texture): THREE.Texture {
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
+  tex.anisotropy = MAX_ANISO;
   tex.needsUpdate = true;
   return tex;
 }
@@ -180,10 +170,6 @@ function textureFromUrl(
   return tex;
 }
 
-/**
- * Returns an Imagine seamless tile texture, or null if disabled / unknown key.
- * Prefer calling preloadImagineAssets() first so maps are ready to clone.
- */
 export function tryImagineTile(key: ImagineTileKey): THREE.Texture | null {
   if (!USE_IMAGINE_ASSETS) return null;
   const url = TILE_URLS[key];
@@ -191,9 +177,6 @@ export function tryImagineTile(key: ImagineTileKey): THREE.Texture | null {
   return textureFromUrl(key, url, tileCache, configureTile);
 }
 
-/**
- * Returns an Imagine sprite texture (transparent PNG), or null.
- */
 export function tryImagineSprite(key: ImagineSpriteKey): THREE.Texture | null {
   if (!USE_IMAGINE_ASSETS) return null;
   const url = SPRITE_URLS[key];
@@ -201,7 +184,6 @@ export function tryImagineSprite(key: ImagineSpriteKey): THREE.Texture | null {
   return textureFromUrl(key, url, spriteCache, configureSprite);
 }
 
-/** URL map for UI / debugging / external loaders. */
 export function imagineTileUrl(key: ImagineTileKey): string | null {
   return TILE_URLS[key] ?? null;
 }
@@ -210,37 +192,40 @@ export function imagineSpriteUrl(key: ImagineSpriteKey): string | null {
   return SPRITE_URLS[key] ?? null;
 }
 
-/**
- * Preload all Imagine assets into HTMLImageElement cache so Texture clones
- * have valid images immediately (no pink/blank flash on first level).
- */
-export function preloadImagineAssets(): Promise<void> {
-  if (!USE_IMAGINE_ASSETS) return Promise.resolve();
-  const urls = [...Object.values(TILE_URLS), ...Object.values(SPRITE_URLS)];
-  return Promise.all(
-    urls.map(
-      (url) =>
-        new Promise<void>((resolve) => {
-          if (htmlImages.has(url)) {
-            resolve();
-            return;
-          }
-          const img = new Image();
-          img.onload = () => {
-            htmlImages.set(url, img);
-            resolve();
-          };
-          img.onerror = () => resolve();
-          img.src = url;
-        }),
-    ),
-  ).then(() => undefined);
+function loadImage(url: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (htmlImages.has(url)) {
+      resolve();
+      return;
+    }
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      htmlImages.set(url, img);
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = url;
+  });
 }
 
-/**
- * Y-up billboard plane with an Imagine sprite (alpha transparent).
- * Useful for props / FX overlays; creatures still use mesh groups by default.
- */
+/** Tiles only — enough to paint the first maze without waiting on sprites. */
+export function preloadImagineTiles(): Promise<void> {
+  if (!USE_IMAGINE_ASSETS) return Promise.resolve();
+  return Promise.all(Object.values(TILE_URLS).map(loadImage)).then(() => undefined);
+}
+
+/** Optional: sprites for billboards / FX. Safe to run in the background. */
+export function preloadImagineSprites(): Promise<void> {
+  if (!USE_IMAGINE_ASSETS) return Promise.resolve();
+  return Promise.all(Object.values(SPRITE_URLS).map(loadImage)).then(() => undefined);
+}
+
+/** Back-compat: tiles first, then sprites. */
+export function preloadImagineAssets(): Promise<void> {
+  return preloadImagineTiles().then(() => preloadImagineSprites());
+}
+
 export function makeImagineBillboard(
   key: ImagineSpriteKey,
   width = 1.4,
@@ -248,12 +233,14 @@ export function makeImagineBillboard(
 ): THREE.Mesh | null {
   const map = tryImagineSprite(key);
   if (!map) return null;
-  const mat = new THREE.MeshBasicMaterial({
+  const mat = new THREE.MeshStandardMaterial({
     map,
     transparent: true,
     alphaTest: 0.12,
     depthWrite: false,
     side: THREE.DoubleSide,
+    roughness: 0.55,
+    metalness: 0.0,
   });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
   mesh.position.y = height * 0.5;

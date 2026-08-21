@@ -165,7 +165,7 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     const water = makeWater(Math.max(worldW, worldD) * 1.02, biome.water);
     water.position.y = undersea ? 0.08 : 0.02;
     if (undersea) {
-      (water.material as THREE.MeshToonMaterial).opacity = 0.4;
+      (water.material as THREE.MeshStandardMaterial).opacity = 0.4;
     }
     group.add(water);
   }

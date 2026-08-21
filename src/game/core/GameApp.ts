@@ -1,11 +1,12 @@
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Input } from "./input";
 import { GameUI } from "../ui-dom/ui";
 import { LevelRuntime } from "../levels/LevelRuntime";
 import { getLevel, getNextLevel, totalLevelsBuilt } from "../levels/levelDefs";
 import { resetProgress, setScuba, type CharacterId } from "../progress/state";
-import { preloadImagineAssets } from "../world/imagineTextures";
-import { preloadModels3d } from "../world/model3d";
+import { preloadImagineSprites, preloadImagineTiles } from "../world/imagineTextures";
+import { preloadCoreModels3d, preloadModels3d } from "../world/model3d";
 
 type Mode = "menu" | "character" | "story" | "play" | "clue" | "fail";
 
@@ -21,21 +22,28 @@ export class GameApp {
   private lastClueText = "";
   private lastT = performance.now();
   private running = true;
-  /** Prevent double fire of fall game-over */
   private fallReported = false;
-  /** Imagine tiles + Blender GLBs ready before first level spawns meshes */
+  private envMap: THREE.Texture | null = null;
+  private raf = 0;
+  /** Tiles + player GLBs — enough to start level 1. */
   private assetsReady: Promise<void>;
 
   constructor(container: HTMLElement) {
+    const mobile =
+      window.innerWidth < 820 ||
+      /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !mobile,
       powerPreference: "high-performance",
+      alpha: false,
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.25 : 1.75));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.12;
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(
@@ -45,6 +53,14 @@ export class GameApp {
       250,
     );
     this.camera.position.set(0, 14, 12);
+
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+    } catch {
+      this.envMap = null;
+    }
 
     this.ui = new GameUI({
       onStartAdventure: () => this.showCharacter(),
@@ -60,14 +76,29 @@ export class GameApp {
     window.addEventListener("resize", this.onResize);
     this.installZoomGuards(container);
     this.input.setGameplayVisible(false);
-    // Warm Imagine tiles + Blender GLB templates before levels spawn entities
     this.assetsReady = Promise.all([
-      preloadImagineAssets(),
-      preloadModels3d(),
+      preloadImagineTiles(),
+      preloadCoreModels3d(),
     ]).then(() => undefined);
-    void this.assetsReady;
+    // Background: rest of GLBs + sprites while the menu is up
+    void this.assetsReady.then(() => {
+      void preloadModels3d();
+      void preloadImagineSprites();
+    });
     this.showMenu();
-    requestAnimationFrame(this.frame);
+    this.raf = requestAnimationFrame(this.frame);
+  }
+
+  dispose(): void {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener("resize", this.onResize);
+    this.teardownLevel();
+    this.input.dispose();
+    this.ui.dispose();
+    this.envMap?.dispose();
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
   }
 
   /**
@@ -177,6 +208,7 @@ export class GameApp {
       onDeath: () => this.onHpDeath(),
       onFallDeath: () => this.onFallGameOver(),
     });
+    this.level.envMap = this.envMap;
     this.level.start();
   }
 

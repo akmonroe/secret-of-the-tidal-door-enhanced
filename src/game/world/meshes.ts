@@ -23,10 +23,13 @@ import {
 import { cloneModel3d, type Model3dKey } from "./model3d";
 
 const toon = (color: number, opts?: { transparent?: boolean; opacity?: number }) =>
-  new THREE.MeshToonMaterial({
+  new THREE.MeshStandardMaterial({
     color,
     transparent: opts?.transparent ?? false,
     opacity: opts?.opacity ?? 1,
+    roughness: 0.62,
+    metalness: 0.06,
+    envMapIntensity: 0.85,
   });
 
 function darken(hex: number, factor: number): number {
@@ -88,16 +91,46 @@ export function makeGround(
 }
 
 export function makeWater(size: number, color: number): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(size, size);
-  // Slightly larger tiles so wave ribbons read chunky from high cam
+  const geo = new THREE.PlaneGeometry(size, size, 48, 48);
   const map = mapForMesh(waterTexture(), size / 7, size / 7);
-  const mat = toonMap(color, map, { transparent: true, opacity: 0.82 });
+  const mat = new THREE.MeshPhysicalMaterial({
+    color,
+    map,
+    roughness: 0.18,
+    metalness: 0.08,
+    transmission: 0.22,
+    thickness: 0.6,
+    ior: 1.33,
+    transparent: true,
+    opacity: 0.88,
+    envMapIntensity: 1.35,
+    specularIntensity: 0.9,
+  });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.05;
-  // LevelRuntime scrolls UV via userData.waterMap
+  mesh.position.y = 0.06;
+  mesh.receiveShadow = true;
   mesh.userData.animateWater = true;
   mesh.userData.waterMap = map;
+  mesh.userData.waterWaves = true;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+uniform float uTime;`,
+      )
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+float wx = transformed.x * 0.35 + uTime * 0.7;
+float wz = transformed.z * 0.28 + uTime * 0.45;
+transformed.y += sin(wx) * 0.07 + sin(wz * 1.3) * 0.045;`,
+      );
+    mat.userData.shader = shader;
+  };
+  mat.customProgramCacheKey = () => "tidal-water-waves";
   return mesh;
 }
 

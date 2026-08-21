@@ -103,7 +103,7 @@ type CacheEntry = {
 };
 
 const cache = new Map<Model3dKey, CacheEntry>();
-let preloadPromise: Promise<void> | null = null;
+const inflight = new Map<Model3dKey, Promise<void>>();
 
 const loader = new GLTFLoader();
 
@@ -160,7 +160,10 @@ function prepareLoadedRoot(root: THREE.Object3D, key: Model3dKey): void {
 }
 
 function loadOne(key: Model3dKey, url: string): Promise<void> {
-  return new Promise((resolve) => {
+  const existing = inflight.get(key);
+  if (existing) return existing;
+  if (cache.get(key)?.ok) return Promise.resolve();
+  const p = new Promise<void>((resolve) => {
     loader.load(
       url,
       (gltf) => {
@@ -177,17 +180,23 @@ function loadOne(key: Model3dKey, url: string): Promise<void> {
       },
     );
   });
+  inflight.set(key, p);
+  return p;
 }
 
-/** Warm all GLB templates. Safe to call multiple times; shares one promise. */
-export function preloadModels3d(): Promise<void> {
-  if (preloadPromise) return preloadPromise;
-  preloadPromise = Promise.all(
-    (Object.keys(MODEL_URLS) as Model3dKey[]).map((key) =>
-      loadOne(key, MODEL_URLS[key]),
-    ),
-  ).then(() => undefined);
-  return preloadPromise;
+const CORE_MODELS: Model3dKey[] = ["adventurer_girl", "adventurer_boy"];
+
+/** Load a subset (or all) GLB templates. Safe to call repeatedly. */
+export function preloadModels3d(keys?: Model3dKey[]): Promise<void> {
+  const list = keys ?? (Object.keys(MODEL_URLS) as Model3dKey[]);
+  return Promise.all(list.map((key) => loadOne(key, MODEL_URLS[key]))).then(
+    () => undefined,
+  );
+}
+
+/** Player models first so character select / level 1 never wait on every fish. */
+export function preloadCoreModels3d(): Promise<void> {
+  return preloadModels3d(CORE_MODELS);
 }
 
 /**

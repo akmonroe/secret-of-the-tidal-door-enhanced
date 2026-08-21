@@ -35,6 +35,7 @@ export type LevelCallbacks = {
 
 export class LevelRuntime {
   scene = new THREE.Scene();
+  envMap: THREE.Texture | null = null;
   private maze!: MazeBuild;
   private player!: Player;
   private hazards: Hazard[] = [];
@@ -51,6 +52,8 @@ export class LevelRuntime {
   private liveBlockers: Blocker[] = [];
   /** Water surface maps for cheap UV scroll (from makeWater userData). */
   private waterMaps: THREE.Texture[] = [];
+  private waterMaterials: { userData: { shader?: { uniforms: { uTime: { value: number } } } } }[] =
+    [];
   /** Waterfall edge sheets (UV scroll downward). */
   private waterfallAnims: {
     map: THREE.Texture;
@@ -70,32 +73,47 @@ export class LevelRuntime {
     const biome = getBiome(this.def.biome);
     this.scene.clear();
     this.scene.background = new THREE.Color(biome.sky);
-    // Soft far fog — wider maps need a longer draw distance
-    this.scene.fog = new THREE.Fog(biome.fog, 55, 160);
+    this.scene.fog = new THREE.Fog(biome.fog, 48, 150);
+    if (this.envMap) this.scene.environment = this.envMap;
 
-    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 1.15);
+    const sky = makeSkyDome(biome.hemiSky, biome.fog);
+    this.scene.add(sky);
+
+    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 0.95);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff8ee, 1.25);
-    sun.position.set(28, 36, 16);
+    const sun = new THREE.DirectionalLight(0xfff1d0, 2.35);
+    sun.position.set(32, 48, 18);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 120;
-    sun.shadow.camera.left = -70;
-    sun.shadow.camera.right = 70;
-    sun.shadow.camera.top = 70;
-    sun.shadow.camera.bottom = -70;
+    const mobile = typeof window !== "undefined" && window.innerWidth < 820;
+    const mapSize = mobile ? 1024 : 2048;
+    sun.shadow.mapSize.set(mapSize, mapSize);
+    sun.shadow.camera.near = 2;
+    sun.shadow.camera.far = 140;
+    sun.shadow.camera.left = -64;
+    sun.shadow.camera.right = 64;
+    sun.shadow.camera.top = 64;
+    sun.shadow.camera.bottom = -64;
+    sun.shadow.bias = -0.00025;
+    sun.shadow.normalBias = 0.035;
+    sun.shadow.radius = 2.5;
     this.scene.add(sun);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+    this.scene.add(sun.target);
+    this.scene.add(new THREE.AmbientLight(biome.hemiSky, 0.22));
+    const fill = new THREE.DirectionalLight(biome.hemiSky, 0.35);
+    fill.position.set(-18, 14, -12);
+    this.scene.add(fill);
 
     this.maze = buildMazeFromRows(this.def.map, biome);
     this.scene.add(this.maze.group);
     this.waterMaps = [];
+    this.waterMaterials = [];
     this.waterfallAnims = [];
     this.edgeFx = [];
     this.maze.group.traverse((obj) => {
       if (obj.userData?.animateWater && obj.userData.waterMap) {
         this.waterMaps.push(obj.userData.waterMap as THREE.Texture);
+        const mat = (obj as THREE.Mesh).material as THREE.Material;
+        if (mat) this.waterMaterials.push(mat);
       }
       if (obj.userData?.animateWaterfall && obj.userData.waterfallMap) {
         this.waterfallAnims.push({
@@ -244,8 +262,12 @@ export class LevelRuntime {
 
     // Subtle water UV drift — cheap, keeps toy water alive
     for (const map of this.waterMaps) {
-      map.offset.x = (this.clock * 0.035) % 1;
-      map.offset.y = (this.clock * 0.022) % 1;
+      map.offset.x = (this.clock * 0.045) % 1;
+      map.offset.y = (this.clock * 0.028) % 1;
+    }
+    for (const mat of this.waterMaterials) {
+      const shader = mat.userData?.shader;
+      if (shader?.uniforms?.uTime) shader.uniforms.uTime.value = this.clock;
     }
     // Edge waterfalls pour into the abyss
     for (const w of this.waterfallAnims) {
@@ -269,7 +291,7 @@ export class LevelRuntime {
         const phase = (ud.dropPhase as number) ?? 0;
         const cycle = ((this.clock * speed + phase) % 6);
         fx.position.y = base - cycle * 1.4;
-        const mat = (fx as THREE.Mesh).material as THREE.MeshToonMaterial;
+        const mat = (fx as THREE.Mesh).material as THREE.MeshStandardMaterial;
         if (mat?.opacity !== undefined) {
           mat.opacity = 0.55 * (1 - cycle / 6);
         }
@@ -412,8 +434,43 @@ export class LevelRuntime {
 
   dispose(): void {
     this.waterMaps = [];
+    this.waterMaterials = [];
     this.waterfallAnims = [];
     this.edgeFx = [];
     this.scene.clear();
   }
+}
+
+function makeSkyDome(top: number, bot: number): THREE.Mesh {
+  const geo = new THREE.SphereGeometry(170, 24, 16);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    fog: false,
+    depthWrite: false,
+    uniforms: {
+      topColor: { value: new THREE.Color(top) },
+      botColor: { value: new THREE.Color(bot) },
+    },
+    vertexShader: `
+      varying float vH;
+      void main() {
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vH = normalize(position).y;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 botColor;
+      varying float vH;
+      void main() {
+        float h = clamp(vH * 0.72 + 0.38, 0.0, 1.0);
+        vec3 col = mix(botColor, topColor, pow(h, 0.85));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false;
+  return mesh;
 }

@@ -738,13 +738,19 @@ function roundRect(
 export function toonMap(
   color: number,
   map: THREE.Texture | null,
-  opts?: { transparent?: boolean; opacity?: number; roughness?: number },
-): THREE.MeshToonMaterial {
-  const mat = new THREE.MeshToonMaterial({
+  opts?: { transparent?: boolean; opacity?: number; roughness?: number; metalness?: number },
+): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({
     color,
     map: map ?? undefined,
+    roughness: opts?.roughness ?? 0.78,
+    metalness: opts?.metalness ?? 0.04,
+    envMapIntensity: 0.9,
     transparent: opts?.transparent ?? false,
     opacity: opts?.opacity ?? 1,
   });
+  if (opts?.transparent) {
+    mat.depthWrite = false;
+  }
   return mat;
 }
