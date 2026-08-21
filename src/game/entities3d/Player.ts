@@ -440,10 +440,10 @@ export class Player {
       billboard.scale.y = idle;
     }
 
-    // Keep the card flat on the water/sand (top-down).
+    // Keep the card flat on the water/sand, above wall slabs.
     if (billboard) {
       billboard.rotation.x = -Math.PI / 2;
-      billboard.position.y = 0.14;
+      billboard.position.y = 0.4;
     }
 
     if (shadow) {

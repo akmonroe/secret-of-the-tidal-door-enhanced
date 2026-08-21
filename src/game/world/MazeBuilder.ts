@@ -170,7 +170,7 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     group.add(water);
   }
 
-  const wallH = indoor ? 1.9 : undersea ? 1.35 : 1.2;
+  const wallH = 0.28;
   const walkableDry = new Set([".", "P", "T", "C", "F", "O"]);
 
   for (let r = 0; r < rowCount; r++) {
@@ -252,10 +252,10 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
           house.position.set(x, 0, z);
           group.add(house);
           blockers.push({
-            minX: x - 2.2,
-            maxX: x + 2.2,
-            minZ: z - 1.4,
-            maxZ: z + 0.6,
+            minX: x - 2.4,
+            maxX: x + 2.4,
+            minZ: z - 1.85,
+            maxZ: z + 1.85,
           });
         }
       }

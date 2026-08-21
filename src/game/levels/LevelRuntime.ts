@@ -73,32 +73,17 @@ export class LevelRuntime {
     const biome = getBiome(this.def.biome);
     this.scene.clear();
     this.scene.background = new THREE.Color(biome.sky);
-    this.scene.fog = new THREE.Fog(biome.fog, 70, 140);
-    if (this.envMap) this.scene.environment = this.envMap;
+    this.scene.fog = new THREE.Fog(biome.fog, 90, 180);
+    // Flat map: no IBL, so water/sand don't pick up a 3D sky reflection
+    this.scene.environment = null;
 
-    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 1.15);
+    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 1.35);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff1d0, 2.1);
-    sun.position.set(12, 60, 8);
-    sun.castShadow = true;
-    const mobile = typeof window !== "undefined" && window.innerWidth < 820;
-    const mapSize = mobile ? 1024 : 2048;
-    sun.shadow.mapSize.set(mapSize, mapSize);
-    sun.shadow.camera.near = 2;
-    sun.shadow.camera.far = 140;
-    sun.shadow.camera.left = -64;
-    sun.shadow.camera.right = 64;
-    sun.shadow.camera.top = 64;
-    sun.shadow.camera.bottom = -64;
-    sun.shadow.bias = -0.00025;
-    sun.shadow.normalBias = 0.035;
-    sun.shadow.radius = 2.5;
+    const sun = new THREE.DirectionalLight(0xfff6e8, 1.55);
+    sun.position.set(2, 80, 1);
+    sun.castShadow = false;
     this.scene.add(sun);
-    this.scene.add(sun.target);
-    this.scene.add(new THREE.AmbientLight(biome.hemiSky, 0.22));
-    const fill = new THREE.DirectionalLight(biome.hemiSky, 0.35);
-    fill.position.set(-18, 14, -12);
-    this.scene.add(fill);
+    this.scene.add(new THREE.AmbientLight(biome.hemiSky, 0.45));
 
     this.maze = buildMazeFromRows(this.def.map, biome);
     this.scene.add(this.maze.group);

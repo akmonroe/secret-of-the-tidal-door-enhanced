@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { Input } from "./input";
 import { GameUI } from "../ui-dom/ui";
 import { LevelRuntime } from "../levels/LevelRuntime";
@@ -42,11 +41,10 @@ export class GameApp {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.25 : 1.75));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.05;
     container.appendChild(this.renderer.domElement);
 
     const aspect =
@@ -60,13 +58,7 @@ export class GameApp {
     this.camera.position.set(0, 36, 0);
     this.camera.rotation.set(-Math.PI / 2, 0, 0);
 
-    try {
-      const pmrem = new THREE.PMREMGenerator(this.renderer);
-      this.envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-      pmrem.dispose();
-    } catch {
-      this.envMap = null;
-    }
+    this.envMap = null;
 
     this.ui = new GameUI({
       onStartAdventure: () => this.showCharacter(),

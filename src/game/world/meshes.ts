@@ -134,40 +134,22 @@ export function makeGround(
 }
 
 export function makeWater(size: number, color: number): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(size, size, 48, 48);
+  const geo = new THREE.PlaneGeometry(size, size, 1, 1);
   const map = mapForMesh(waterTexture(), size / 7, size / 7);
   const mat = new THREE.MeshStandardMaterial({
     color,
     map,
-    roughness: 0.62,
-    metalness: 0.04,
-    envMapIntensity: 0.2,
+    roughness: 0.78,
+    metalness: 0.0,
+    envMapIntensity: 0,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.06;
+  mesh.position.y = 0.04;
   mesh.receiveShadow = true;
   mesh.userData.animateWater = true;
   mesh.userData.waterMap = map;
-  mesh.userData.waterWaves = true;
-  mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uTime = { value: 0 };
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
-        `#include <common>
-uniform float uTime;`,
-      )
-      .replace(
-        "#include <begin_vertex>",
-        `#include <begin_vertex>
-float wx = transformed.x * 0.35 + uTime * 0.7;
-float wz = transformed.z * 0.28 + uTime * 0.45;
-transformed.y += sin(wx) * 0.02 + sin(wz * 1.3) * 0.012;`,
-      );
-    mat.userData.shader = shader;
-  };
-  mat.customProgramCacheKey = () => "tidal-water-waves";
+  mesh.userData.waterWaves = false;
   return mesh;
 }
 
@@ -175,7 +157,7 @@ export type WallStyle = "rock" | "stucco" | "coral" | "hull" | "brick" | "basalt
 
 export function makeWallBox(
   w: number,
-  h: number,
+  _h: number,
   d: number,
   color: number,
   style: WallStyle = "rock",
@@ -188,11 +170,12 @@ export function makeWallBox(
   else if (style === "basalt") src = basaltTexture();
   else if (style === "ice") src = iceTexture();
   else src = rockTexture();
-  const map = src ? mapForMesh(src, Math.max(1, w), Math.max(1, h)) : null;
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), toonMap(color, map));
-  mesh.castShadow = true;
+  const slab = 0.28;
+  const map = src ? mapForMesh(src, 1, 1) : null;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, slab, d), toonMap(color, map));
+  mesh.castShadow = false;
   mesh.receiveShadow = true;
-  mesh.position.y = h / 2;
+  mesh.position.y = slab / 2;
   return mesh;
 }
 
@@ -220,6 +203,8 @@ export function makeFloorTile(
 }
 
 export function makeRock(color = 0xb8b0a8): THREE.Group {
+  const img = tryPropDecal("rock", 1.35, 1.35);
+  if (img) return img;
   const g = new THREE.Group();
   // Soft pastel rock pile — toy stone, not granite grey
   const main = color;
@@ -244,7 +229,7 @@ export function makeRock(color = 0xb8b0a8): THREE.Group {
 }
 
 export function makePalm(): THREE.Group {
-  const img = tryPropDecal("palm", 2.2, 2.2);
+  const img = tryPropDecal("palm", 2.45, 2.45);
   if (img) return img;
   const g = new THREE.Group();
   // Candy-brown trunk with ring bands
@@ -291,6 +276,8 @@ export function makePalm(): THREE.Group {
 }
 
 export function makeCrate(): THREE.Group {
+  const img = tryPropDecal("crate", 1.05, 1.05);
+  if (img) return img;
   const g = new THREE.Group();
   const map = mapForMesh(crateTexture(), 1, 1);
   const box = new THREE.Mesh(
@@ -355,6 +342,8 @@ export function makeCoralProp(color = 0xff6b7a): THREE.Group {
 }
 
 export function makeHouse(): THREE.Group {
+  const img = tryPropDecal("stilt_house", 5.2, 3.9);
+  if (img) return img;
   const g = new THREE.Group();
   const postMat = toon(0xc4894a);
   for (const [x, z] of [
@@ -410,13 +399,13 @@ export function makeHouse(): THREE.Group {
 export function makeCluePedestal(): THREE.Group {
   const g = new THREE.Group();
   const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.5, 0.65, 0.4, 8),
+    new THREE.CylinderGeometry(0.42, 0.5, 0.08, 12),
     toon(0x6a8aab),
   );
-  base.position.y = 0.2;
+  base.position.y = 0.04;
   g.add(base);
-  // Pearl shell — saturated gold, or Imagine conch
-  const shellBill = makeImagineGroundDecal("clue_shell", 0.72, 0.72);
+  // Pearl shell — overhead decal on the sand
+  const shellBill = makeImagineGroundDecal("clue_shell", 0.78, 0.78);
   let shell: THREE.Object3D;
   if (shellBill) {
     shellBill.position.y = 0.1;
@@ -444,7 +433,7 @@ export function makeCluePedestal(): THREE.Group {
     toon(0xff9ecd),
   );
   ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.55;
+  ring.position.y = 0.1;
   g.add(ring);
   const glow = new THREE.PointLight(0xffe066, 1.7, 9);
   glow.position.y = 1;
@@ -713,7 +702,7 @@ export function makePlayerFromGlb(character: CharacterId, scuba: boolean): THREE
  */
 export function makePlayerCharacter(character: CharacterId, scuba: boolean): THREE.Group {
   const topKey = character === "girl" ? "adventurer_girl_top" : "adventurer_boy_top";
-  const top = makeImagineGroundDecal(topKey, 0.95, 1.55);
+  const top = makeImagineGroundDecal(topKey, 0.78, 1.32);
   if (top) {
     const g = new THREE.Group();
     const shadow = new THREE.Mesh(
@@ -723,8 +712,8 @@ export function makePlayerCharacter(character: CharacterId, scuba: boolean): THR
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.03;
     g.add(shadow);
-    top.position.y = 0.14;
-    top.renderOrder = 4;
+    top.position.y = 0.4;
+    top.renderOrder = 8;
     g.add(top);
     g.userData = {
       hips: g,

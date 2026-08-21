@@ -301,7 +301,8 @@ export function makeImagineGroundDecal(
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, length), mat);
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.y = 0.1;
-  mesh.castShadow = true;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
   mesh.userData.imagineSprite = key;
   mesh.userData.groundDecal = true;
   return mesh;
