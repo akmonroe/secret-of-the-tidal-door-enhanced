@@ -15,6 +15,8 @@ import rockWallUrl from "../../assets/imagine/tiles/rock_wall.webp";
 import coralWallUrl from "../../assets/imagine/tiles/coral_wall.webp";
 import basaltVentUrl from "../../assets/imagine/tiles/basalt_vent.webp";
 import grassUrl from "../../assets/imagine/tiles/grass.webp";
+import wetSandUrl from "../../assets/imagine/tiles/wet_sand.webp";
+import pebblesUrl from "../../assets/imagine/tiles/pebbles.webp";
 
 import sharkUrl from "../../assets/imagine/creatures/shark.webp";
 import jellyUrl from "../../assets/imagine/creatures/jelly.webp";
@@ -36,6 +38,10 @@ import flowersUrl from "../../assets/imagine/props/flowers.webp";
 import driftwoodUrl from "../../assets/imagine/props/driftwood.webp";
 import seagrassUrl from "../../assets/imagine/props/seagrass.webp";
 import palmBUrl from "../../assets/imagine/props/palm_b.webp";
+import hibiscusUrl from "../../assets/imagine/props/hibiscus.webp";
+import tidePoolUrl from "../../assets/imagine/props/tide_pool.webp";
+import starfishUrl from "../../assets/imagine/props/starfish.webp";
+import duneGrassUrl from "../../assets/imagine/props/dune_grass.webp";
 
 import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.webp";
 import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.webp";
@@ -65,7 +71,9 @@ export type ImagineTileKey =
   | "rock_wall"
   | "coral_wall"
   | "basalt_vent"
-  | "grass";
+  | "grass"
+  | "wet_sand"
+  | "pebbles";
 
 export type ImagineSpriteKey =
   | "shark"
@@ -87,6 +95,10 @@ export type ImagineSpriteKey =
   | "driftwood"
   | "seagrass"
   | "palm_b"
+  | "hibiscus"
+  | "tide_pool"
+  | "starfish"
+  | "dune_grass"
   | "adventurer_girl"
   | "adventurer_boy"
   | "adventurer_girl_face"
@@ -115,6 +127,8 @@ const TILE_URLS: Record<ImagineTileKey, string> = {
   coral_wall: coralWallUrl,
   basalt_vent: basaltVentUrl,
   grass: grassUrl,
+  wet_sand: wetSandUrl,
+  pebbles: pebblesUrl,
 };
 
 const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
@@ -137,6 +151,10 @@ const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
   driftwood: driftwoodUrl,
   seagrass: seagrassUrl,
   palm_b: palmBUrl,
+  hibiscus: hibiscusUrl,
+  tide_pool: tidePoolUrl,
+  starfish: starfishUrl,
+  dune_grass: duneGrassUrl,
   adventurer_girl: adventurerGirlUrl,
   adventurer_boy: adventurerBoyUrl,
   adventurer_girl_face: adventurerGirlFaceUrl,

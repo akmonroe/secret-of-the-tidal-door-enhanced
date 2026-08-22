@@ -196,6 +196,34 @@ export function grassTexture(): THREE.Texture {
   });
 }
 
+/** Packed wet sand at the waterline. */
+export function wetSandTexture(): THREE.Texture {
+  const img = tryImagineTile("wet_sand");
+  if (img) return img;
+  return canvasTexture("wet_sand", 128, (ctx, s) => {
+    ctx.fillStyle = "#8a5a28";
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 22; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        10 + Math.random() * 18,
+        4 + Math.random() * 8,
+        `rgba(120, 70, 30, ${0.14 + Math.random() * 0.2})`,
+      );
+    }
+    noise(ctx, s, 0.04);
+  });
+}
+
+/** Mixed beach cobbles for shoreline patches. */
+export function pebbleTexture(): THREE.Texture {
+  const img = tryImagineTile("pebbles");
+  if (img) return img;
+  return rockTexture();
+}
+
 // ─── Water ───────────────────────────────────────────────────────────
 
 /** Water surface: Imagine turquoise water, or procedural wave ribbons. */

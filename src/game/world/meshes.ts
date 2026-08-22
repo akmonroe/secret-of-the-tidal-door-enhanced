@@ -10,11 +10,13 @@ import {
   hullTexture,
   iceTexture,
   metalGrateTexture,
+  pebbleTexture,
   rockTexture,
   sandTexture,
   toonMap,
   wallStuccoTexture,
   waterTexture,
+  wetSandTexture,
   woodTexture,
 } from "./textures";
 import {
@@ -95,7 +97,9 @@ export type GroundStyle =
   | "grate"
   | "ice"
   | "basalt"
-  | "grass";
+  | "grass"
+  | "wet_sand"
+  | "pebbles";
 
 /** Isolated Imagine prop as a top-down decal. */
 function tryPropDecal(
@@ -137,6 +141,8 @@ export function makeGround(
   else if (style === "ice") src = iceTexture();
   else if (style === "basalt") src = basaltTexture();
   else if (style === "grass") src = grassTexture();
+  else if (style === "wet_sand") src = wetSandTexture();
+  else if (style === "pebbles") src = pebbleTexture();
   const map = src ? mapForMesh(src, size / 6, size / 6) : null;
   const mesh = new THREE.Mesh(geo, basicMap(color, map));
   mesh.rotation.x = -Math.PI / 2;
@@ -196,10 +202,12 @@ export function makeWallBox(
   );
   fill.position.y = 0.2;
   g.add(fill);
-  // Keep biome tint as a thin inner rim so ice/coral/beach still differ.
+  // Keep a dark inner lip so ice/coral/beach blocks still read as separate cells.
+  const rimColor =
+    style === "ice" || style === "stucco" ? darken(color, 0.62) : 0x14100c;
   const rim = new THREE.Mesh(
     new THREE.BoxGeometry(w * 0.9, 0.04, d * 0.9),
-    new THREE.MeshBasicMaterial({ color: darken(color, 0.42) }),
+    new THREE.MeshBasicMaterial({ color: rimColor }),
   );
   rim.position.y = 0.38;
   g.add(rim);
@@ -211,6 +219,7 @@ export function makeFloorTile(
   color: number,
   style: GroundStyle,
   height = 0.12,
+  uvShift = 0,
 ): THREE.Mesh {
   let src: THREE.Texture | null = null;
   if (style === "sand") src = sandTexture();
@@ -220,8 +229,13 @@ export function makeFloorTile(
   else if (style === "ice") src = iceTexture();
   else if (style === "basalt") src = basaltTexture();
   else if (style === "grass") src = grassTexture();
+  else if (style === "wet_sand") src = wetSandTexture();
+  else if (style === "pebbles") src = pebbleTexture();
   else src = hullTexture();
-  const map = src ? mapForMesh(src, 0.9, 0.9) : null;
+  const map = src ? mapForMesh(src, 0.92, 0.92) : null;
+  if (map && uvShift) {
+    map.offset.set((uvShift * 5.17) % 1, (uvShift * 3.91) % 1);
+  }
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(size, height, size),
     basicMap(color, map),
@@ -376,6 +390,52 @@ export function makeSeagrass(): THREE.Group {
   pad.position.y = 0.1;
   g.add(pad);
   return g;
+}
+
+export function makeHibiscus(): THREE.Group {
+  const img = tryPropDecal("hibiscus", 1.28, 1.28, { shadow: false });
+  if (img) return img;
+  return makeFlowerPatch();
+}
+
+export function makeTidePool(): THREE.Group {
+  const img = tryPropDecal("tide_pool", 1.55, 1.55, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(
+    new THREE.CircleGeometry(0.48, 10),
+    new THREE.MeshBasicMaterial({ color: 0x3a342e }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.11;
+  const pool = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 10),
+    new THREE.MeshBasicMaterial({ color: 0x1aa8c0 }),
+  );
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.y = 0.12;
+  g.add(ring, pool);
+  return g;
+}
+
+export function makeStarfish(): THREE.Group {
+  const img = tryPropDecal("starfish", 1.05, 1.05, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 5),
+    new THREE.MeshBasicMaterial({ color: 0xe85820 }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.12;
+  g.add(pad);
+  return g;
+}
+
+export function makeDuneGrass(): THREE.Group {
+  const img = tryPropDecal("dune_grass", 1.5, 1.5, { shadow: false });
+  if (img) return img;
+  return makeGrassTuft();
 }
 
 export function makeCrate(): THREE.Group {

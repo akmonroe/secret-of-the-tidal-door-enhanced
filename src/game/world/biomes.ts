@@ -26,18 +26,18 @@ export type BiomePalette = {
 };
 
 export const BIOMES: Record<string, BiomePalette> = {
-  // Overhead map: saturated sky vs gold sand vs deep teal water
+  // Overhead map: gold sand vs deep teal water vs dark stone vs emerald grass
   beach: {
     id: "beach",
-    fog: 0x3a88b0,
-    sky: 0x1a6aaa,
-    ground: 0xc49a4a,
-    groundB: 0xd4aa58,
-    water: 0x1a7a94,
-    wall: 0x6a5c50,
-    accent: 0x2d9a4a,
-    hemiSky: 0xb4cce0,
-    hemiGround: 0x8a6e38,
+    fog: 0x1a88c8,
+    sky: 0x1390e0,
+    ground: 0xffffff,
+    groundB: 0xffffff,
+    water: 0xffffff,
+    wall: 0xffffff,
+    accent: 0x22c94a,
+    hemiSky: 0xc8e4ff,
+    hemiGround: 0xd8a84a,
   },
   house: {
     // Cozy indoor — warm, not muddy brown cave
