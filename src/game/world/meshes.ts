@@ -6,6 +6,7 @@ import {
   coralWallTexture,
   crateTexture,
   grassSeafloorTexture,
+  grassTexture,
   hullTexture,
   iceTexture,
   metalGrateTexture,
@@ -93,23 +94,32 @@ export type GroundStyle =
   | "hull"
   | "grate"
   | "ice"
-  | "basalt";
+  | "basalt"
+  | "grass";
 
 /** Isolated Imagine prop as a top-down decal. */
 function tryPropDecal(
   key: ImagineSpriteKey,
   width: number,
   length: number,
+  opts?: { shadow?: boolean },
 ): THREE.Group | null {
   const decal = makeImagineGroundDecal(key, width, length);
   if (!decal) return null;
   const g = new THREE.Group();
   g.add(decal);
-  addBlobShadow(g, Math.max(0.35, width * 0.28));
+  if (opts?.shadow !== false) addBlobShadow(g, Math.max(0.35, width * 0.28));
   g.userData.imagineMode = true;
   g.userData.billboard = decal;
   g.userData.spriteLayout = "prop";
   return g;
+}
+
+function basicMap(color: number, map: THREE.Texture | null): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({
+    color,
+    map: map ?? undefined,
+  });
 }
 
 export function makeGround(
@@ -126,8 +136,9 @@ export function makeGround(
   else if (style === "grate") src = metalGrateTexture();
   else if (style === "ice") src = iceTexture();
   else if (style === "basalt") src = basaltTexture();
+  else if (style === "grass") src = grassTexture();
   const map = src ? mapForMesh(src, size / 6, size / 6) : null;
-  const mesh = new THREE.Mesh(geo, toonMap(color, map));
+  const mesh = new THREE.Mesh(geo, basicMap(color, map));
   mesh.rotation.x = -Math.PI / 2;
   mesh.receiveShadow = true;
   return mesh;
@@ -136,12 +147,9 @@ export function makeGround(
 export function makeWater(size: number, color: number): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(size, size, 1, 1);
   const map = mapForMesh(waterTexture(), size / 7, size / 7);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     color,
     map,
-    roughness: 0.78,
-    metalness: 0.0,
-    envMapIntensity: 0,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
@@ -182,7 +190,7 @@ export function makeWallBox(
   const fill = new THREE.Mesh(
     new THREE.BoxGeometry(w * 0.88, 0.34, d * 0.88),
     new THREE.MeshBasicMaterial({
-      color: 0xcec6bc,
+      color,
       map: map ?? undefined,
     }),
   );
@@ -191,7 +199,7 @@ export function makeWallBox(
   // Keep biome tint as a thin inner rim so ice/coral/beach still differ.
   const rim = new THREE.Mesh(
     new THREE.BoxGeometry(w * 0.9, 0.04, d * 0.9),
-    new THREE.MeshBasicMaterial({ color: darken(color, 0.55) }),
+    new THREE.MeshBasicMaterial({ color: darken(color, 0.42) }),
   );
   rim.position.y = 0.38;
   g.add(rim);
@@ -211,11 +219,12 @@ export function makeFloorTile(
   else if (style === "grate") src = metalGrateTexture();
   else if (style === "ice") src = iceTexture();
   else if (style === "basalt") src = basaltTexture();
+  else if (style === "grass") src = grassTexture();
   else src = hullTexture();
   const map = src ? mapForMesh(src, 0.9, 0.9) : null;
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(size, height, size),
-    toonMap(color, map),
+    basicMap(color, map),
   );
   mesh.receiveShadow = true;
   return mesh;
@@ -291,6 +300,81 @@ export function makePalm(): THREE.Group {
     nut.position.set(ox, 2.05, oz);
     g.add(nut);
   }
+  return g;
+}
+
+export function makePalmetto(): THREE.Group {
+  const img = tryPropDecal("palm_b", 2.35, 2.35);
+  if (img) return img;
+  return makePalm();
+}
+
+export function makeGrassTuft(): THREE.Group {
+  const img = tryPropDecal("grass_tuft", 1.15, 1.15, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(0.38, 8),
+    new THREE.MeshBasicMaterial({ color: 0x3a7a28 }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.12;
+  g.add(pad);
+  return g;
+}
+
+export function makeBush(): THREE.Group {
+  const img = tryPropDecal("bush", 1.4, 1.4, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(0.48, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2a5c20 }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.12;
+  g.add(pad);
+  return g;
+}
+
+export function makeFlowerPatch(): THREE.Group {
+  const img = tryPropDecal("flowers", 1.2, 1.2, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(0.4, 8),
+    new THREE.MeshBasicMaterial({ color: 0xd87828 }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.12;
+  g.add(pad);
+  return g;
+}
+
+export function makeDriftwood(): THREE.Group {
+  const img = tryPropDecal("driftwood", 1.7, 0.85, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const log = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.12, 0.32),
+    new THREE.MeshBasicMaterial({ color: 0x6a4a30 }),
+  );
+  log.position.y = 0.12;
+  g.add(log);
+  return g;
+}
+
+export function makeSeagrass(): THREE.Group {
+  const img = tryPropDecal("seagrass", 1.35, 1.35, { shadow: false });
+  if (img) return img;
+  const g = new THREE.Group();
+  const pad = new THREE.Mesh(
+    new THREE.CircleGeometry(0.4, 8),
+    new THREE.MeshBasicMaterial({ color: 0x1a6a48, transparent: true, opacity: 0.85 }),
+  );
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.1;
+  g.add(pad);
   return g;
 }
 

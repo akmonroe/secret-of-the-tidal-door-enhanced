@@ -44,7 +44,7 @@ export class GameApp {
     this.renderer.shadowMap.enabled = false;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 0.88;
     container.appendChild(this.renderer.domElement);
 
     const aspect =

@@ -14,6 +14,7 @@ import iceUrl from "../../assets/imagine/tiles/ice.webp";
 import rockWallUrl from "../../assets/imagine/tiles/rock_wall.webp";
 import coralWallUrl from "../../assets/imagine/tiles/coral_wall.webp";
 import basaltVentUrl from "../../assets/imagine/tiles/basalt_vent.webp";
+import grassUrl from "../../assets/imagine/tiles/grass.webp";
 
 import sharkUrl from "../../assets/imagine/creatures/shark.webp";
 import jellyUrl from "../../assets/imagine/creatures/jelly.webp";
@@ -29,6 +30,12 @@ import stiltHouseUrl from "../../assets/imagine/props/stilt_house.webp";
 import crateUrl from "../../assets/imagine/props/crate.webp";
 import clueShellUrl from "../../assets/imagine/props/clue_shell.webp";
 import rockUrl from "../../assets/imagine/props/rock.webp";
+import grassTuftUrl from "../../assets/imagine/props/grass_tuft.webp";
+import bushUrl from "../../assets/imagine/props/bush.webp";
+import flowersUrl from "../../assets/imagine/props/flowers.webp";
+import driftwoodUrl from "../../assets/imagine/props/driftwood.webp";
+import seagrassUrl from "../../assets/imagine/props/seagrass.webp";
+import palmBUrl from "../../assets/imagine/props/palm_b.webp";
 
 import adventurerGirlUrl from "../../assets/imagine/characters/adventurer_girl.webp";
 import adventurerBoyUrl from "../../assets/imagine/characters/adventurer_boy.webp";
@@ -57,7 +64,8 @@ export type ImagineTileKey =
   | "ice"
   | "rock_wall"
   | "coral_wall"
-  | "basalt_vent";
+  | "basalt_vent"
+  | "grass";
 
 export type ImagineSpriteKey =
   | "shark"
@@ -73,6 +81,12 @@ export type ImagineSpriteKey =
   | "crate"
   | "clue_shell"
   | "rock"
+  | "grass_tuft"
+  | "bush"
+  | "flowers"
+  | "driftwood"
+  | "seagrass"
+  | "palm_b"
   | "adventurer_girl"
   | "adventurer_boy"
   | "adventurer_girl_face"
@@ -100,6 +114,7 @@ const TILE_URLS: Record<ImagineTileKey, string> = {
   rock_wall: rockWallUrl,
   coral_wall: coralWallUrl,
   basalt_vent: basaltVentUrl,
+  grass: grassUrl,
 };
 
 const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
@@ -116,6 +131,12 @@ const SPRITE_URLS: Record<ImagineSpriteKey, string> = {
   crate: crateUrl,
   clue_shell: clueShellUrl,
   rock: rockUrl,
+  grass_tuft: grassTuftUrl,
+  bush: bushUrl,
+  flowers: flowersUrl,
+  driftwood: driftwoodUrl,
+  seagrass: seagrassUrl,
+  palm_b: palmBUrl,
   adventurer_girl: adventurerGirlUrl,
   adventurer_boy: adventurerBoyUrl,
   adventurer_girl_face: adventurerGirlFaceUrl,
@@ -321,14 +342,12 @@ export function makeImagineGroundDecal(
 ): THREE.Mesh | null {
   const map = tryImagineSprite(key);
   if (!map) return null;
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     map,
     transparent: true,
     alphaTest: 0.14,
     depthWrite: true,
     side: THREE.DoubleSide,
-    roughness: 0.4,
-    metalness: 0.05,
   });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, length), mat);
   mesh.rotation.x = -Math.PI / 2;

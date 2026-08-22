@@ -3,13 +3,19 @@ import type { BiomePalette } from "./biomes";
 import type { Blocker } from "./collision";
 import { resolveCircle } from "./collision";
 import {
+  makeBush,
   makeCoralProp,
   makeCrate,
+  makeDriftwood,
   makeFloorTile,
+  makeFlowerPatch,
+  makeGrassTuft,
   makeGround,
   makeHouse,
   makePalm,
+  makePalmetto,
   makeRock,
+  makeSeagrass,
   makeWallBox,
   makeWater,
   type GroundStyle,
@@ -52,6 +58,13 @@ export type MazeBuild = {
 
 function key(c: number, r: number): string {
   return `${c},${r}`;
+}
+
+/** Deterministic 0..1 from cell coords — landscaping scatter stays stable. */
+function hash2(c: number, r: number): number {
+  let n = Math.imul(c + 1, 374761393) + Math.imul(r + 1, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n >>> 0) % 10000) / 10000;
 }
 
 export function cellToWorld(
@@ -165,13 +178,31 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     const water = makeWater(Math.max(worldW, worldD) * 1.02, biome.water);
     water.position.y = undersea ? 0.08 : 0.02;
     if (undersea) {
-      (water.material as THREE.MeshStandardMaterial).opacity = 0.4;
+      const mat = water.material as THREE.MeshBasicMaterial;
+      mat.transparent = true;
+      mat.opacity = 0.45;
+      mat.depthWrite = false;
     }
     group.add(water);
   }
 
   const wallH = 0.28;
   const walkableDry = new Set([".", "P", "T", "C", "F", "O"]);
+  const shoreLand =
+    biome.id === "beach" || biome.id === "storm" || biome.id === "lagoon";
+
+  const cellAt = (cc: number, rr: number): string => {
+    if (rr < 0 || rr >= rowCount || cc < 0 || cc >= colCount) return " ";
+    const line = rows[rr].padEnd(colCount, indoor ? "#" : " ");
+    return line[cc];
+  };
+  const isDryChar = (ch: string) =>
+    ch === "." || ch === "P" || ch === "T" || ch === "C" || ch === "F" || ch === "O";
+  const adjacentDry = (cc: number, rr: number): boolean =>
+    isDryChar(cellAt(cc - 1, rr)) ||
+    isDryChar(cellAt(cc + 1, rr)) ||
+    isDryChar(cellAt(cc, rr - 1)) ||
+    isDryChar(cellAt(cc, rr + 1));
 
   for (let r = 0; r < rowCount; r++) {
     const line = rows[r].padEnd(colCount, indoor ? "#" : " ");
@@ -182,10 +213,12 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
       // Floors
       if (walkableDry.has(ch) || (indoor && ch !== "#") || ch === "H") {
         if (ch !== "#" && ch !== " ") {
+          const useGrass =
+            shoreLand && ch === "." && hash2(c, r) < 0.34;
           const tile = makeFloorTile(
             CELL * 0.98,
-            biome.groundB,
-            floorStyle,
+            useGrass ? 0xb8cc70 : biome.groundB,
+            useGrass ? "grass" : floorStyle,
             indoor ? 0.16 : 0.1,
           );
           tile.position.set(x, indoor ? 0.08 : 0.05, z);
@@ -219,9 +252,10 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
       }
 
       if (ch === "T") {
-        const palm = makePalm();
+        const palm = hash2(c, r) < 0.46 ? makePalmetto() : makePalm();
         palm.position.set(x, 0, z);
-        palm.scale.setScalar(0.65);
+        palm.rotation.y = hash2(c + 3, r + 5) * Math.PI * 2;
+        palm.scale.setScalar(0.58 + hash2(c, r + 9) * 0.18);
         group.add(palm);
         blockers.push(block(x, z, 0.35));
       }
@@ -267,6 +301,21 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     }
   }
 
+  scatterLandscaping(group, {
+    rowCount,
+    colCount,
+    originX,
+    originZ,
+    indoor,
+    undersea,
+    shoreLand,
+    spawn,
+    housePos,
+    cluePos,
+    cellAt,
+    adjacentDry,
+  });
+
   // Bold fall-edge: kids must see where the world ends before they die
   group.add(buildWorldEdgeGuard(originX, originZ, colCount, rowCount));
 
@@ -283,6 +332,96 @@ export function buildMazeFromRows(rows: string[], biome: BiomePalette): MazeBuil
     originZ,
     cellSize: CELL,
   };
+}
+
+/**
+ * Scatter grass, flowers, shrubs, driftwood and shoreline seagrass so the
+ * overhead map isn't a single sand color. Props are decorative (no blockers).
+ */
+function scatterLandscaping(
+  group: THREE.Group,
+  opts: {
+    rowCount: number;
+    colCount: number;
+    originX: number;
+    originZ: number;
+    indoor: boolean;
+    undersea: boolean;
+    shoreLand: boolean;
+    spawn: THREE.Vector3;
+    housePos: THREE.Vector3 | null;
+    cluePos: THREE.Vector3 | null;
+    cellAt: (c: number, r: number) => string;
+    adjacentDry: (c: number, r: number) => boolean;
+  },
+): void {
+  if (opts.indoor) return;
+  const near = (x: number, z: number, p: THREE.Vector3 | null, rad: number) =>
+    !!p && Math.hypot(x - p.x, z - p.z) < rad;
+
+  for (let r = 0; r < opts.rowCount; r++) {
+    for (let c = 0; c < opts.colCount; c++) {
+      const ch = opts.cellAt(c, r);
+      const { x, z } = cellToWorld(c, r, opts.originX, opts.originZ);
+      if (near(x, z, opts.spawn, 2.4)) continue;
+      if (near(x, z, opts.cluePos, 2.0)) continue;
+      if (near(x, z, opts.housePos, 3.6)) continue;
+
+      const h = hash2(c + 17, r + 91);
+      const yaw = hash2(c + 4, r + 11) * Math.PI * 2;
+      const jx = (hash2(c + 2, r + 6) - 0.5) * 0.22;
+      const jz = (hash2(c + 8, r + 3) - 0.5) * 0.22;
+      const sc = 0.72 + hash2(c, r + 3) * 0.4;
+
+      if (ch === "." && opts.shoreLand) {
+        let prop: THREE.Group | null = null;
+        if (h < 0.13) prop = makeGrassTuft();
+        else if (h < 0.2) prop = makeFlowerPatch();
+        else if (h < 0.26) prop = makeBush();
+        else if (h < 0.3) prop = makeDriftwood();
+        if (prop) {
+          prop.position.set(x + jx, 0.06, z + jz);
+          prop.rotation.y = yaw;
+          prop.scale.setScalar(sc);
+          group.add(prop);
+        }
+      } else if ((ch === "." || ch === "O") && opts.undersea && h < 0.14) {
+        const sg = makeSeagrass();
+        sg.position.set(x + jx, 0.04, z + jz);
+        sg.rotation.y = yaw;
+        sg.scale.setScalar(sc);
+        group.add(sg);
+      }
+
+      if (ch === "~" && opts.shoreLand && opts.adjacentDry(c, r)) {
+        const shallow = new THREE.Mesh(
+          new THREE.PlaneGeometry(CELL * 0.96, CELL * 0.96),
+          new THREE.MeshBasicMaterial({
+            color: 0x3aa090,
+            transparent: true,
+            opacity: 0.3,
+            depthWrite: false,
+          }),
+        );
+        shallow.rotation.x = -Math.PI / 2;
+        shallow.position.set(x, 0.08, z);
+        group.add(shallow);
+        if (h < 0.4) {
+          const sg = makeSeagrass();
+          sg.position.set(x + jx, 0.05, z + jz);
+          sg.rotation.y = yaw;
+          sg.scale.setScalar(0.65 + hash2(c + 1, r) * 0.4);
+          group.add(sg);
+        } else if (h < 0.48) {
+          const dw = makeDriftwood();
+          dw.position.set(x, 0.05, z);
+          dw.rotation.y = yaw;
+          dw.scale.setScalar(0.78);
+          group.add(dw);
+        }
+      }
+    }
+  }
 }
 
 /**

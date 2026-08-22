@@ -161,6 +161,41 @@ export function rockTexture(): THREE.Texture {
   });
 }
 
+/** Overhead meadow grass — Imagine tile, or procedural green clumps. */
+export function grassTexture(): THREE.Texture {
+  const img = tryImagineTile("grass");
+  if (img) return img;
+  return canvasTexture("grass", 128, (ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, s, s);
+    g.addColorStop(0, "#3f7a28");
+    g.addColorStop(0.45, "#4e8c32");
+    g.addColorStop(1, "#2f641c");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 40; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        8 + Math.random() * 16,
+        5 + Math.random() * 10,
+        `rgba(90, 160, 50, ${0.12 + Math.random() * 0.2})`,
+      );
+    }
+    for (let i = 0; i < 24; i++) {
+      softBlob(
+        ctx,
+        Math.random() * s,
+        Math.random() * s,
+        4 + Math.random() * 8,
+        3 + Math.random() * 5,
+        `rgba(30, 80, 18, ${0.1 + Math.random() * 0.16})`,
+      );
+    }
+    noise(ctx, s, 0.05);
+  });
+}
+
 // ─── Water ───────────────────────────────────────────────────────────
 
 /** Water surface: Imagine turquoise water, or procedural wave ribbons. */

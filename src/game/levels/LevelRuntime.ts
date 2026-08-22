@@ -77,13 +77,13 @@ export class LevelRuntime {
     // Flat map: no IBL, so water/sand don't pick up a 3D sky reflection
     this.scene.environment = null;
 
-    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 1.35);
+    const hemi = new THREE.HemisphereLight(biome.hemiSky, biome.hemiGround, 0.82);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xfff6e8, 1.55);
+    const sun = new THREE.DirectionalLight(0xfff0d8, 0.92);
     sun.position.set(2, 80, 1);
     sun.castShadow = false;
     this.scene.add(sun);
-    this.scene.add(new THREE.AmbientLight(biome.hemiSky, 0.45));
+    this.scene.add(new THREE.AmbientLight(biome.hemiSky, 0.26));
 
     this.maze = buildMazeFromRows(this.def.map, biome);
     this.scene.add(this.maze.group);
